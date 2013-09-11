@@ -1,4 +1,9 @@
 import re
+import aplpy
+import mirexec
+import sys 
+import pylab as pl
+import os 
 
 def tkout(key, mirtout):
 	'''
@@ -20,3 +25,22 @@ def tkout(key, mirtout):
 			print l;	
 	return l;
 
+def implot(imfile, plot):
+	'''
+	Uses aplpy and the fits task to make a simple plot of the image
+	[imfile]
+
+	!!! Converts the miriad file to a fits file, plots it and then
+	deletes the fits file!
+	'''
+	t = mirexec.TaskFits();
+	t.in_ = imfile;
+	t.out = imfile+'_temp.fits';
+	t.op = 'xyout';
+	if not os.path.exists(t.out):
+		tout = t.snarf();
+	f = aplpy.FITSFigure(t.out, dimensions=[0,1], slices=[0,0]);
+	f.show_colorscale();
+	os.system('rm '+t.out);
+	if plot: 
+		pl.savefig(plot);
