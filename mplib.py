@@ -17,6 +17,6 @@ def tkout(key, mirtout):
 		if re.search(key, mirtout[0][i]):
 			l = mirtout[0][i];
 			l = dict(u.split(":") for u in l.split(","));
-	
+			print l;	
 	return l;
 
