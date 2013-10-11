@@ -52,8 +52,9 @@ def scal(U):
 	return tout;
 
 def make_dirty(U):
-	TaskInvert(vis = U['vis'], map = U['map'], beam = U['beam'], imsize =
-		U['imsize'], cell = U['cell'], options = U['invert_options']).run();
+	tout = TaskInvert(vis = U['vis'], map = U['map'], beam = U['beam'], imsize =
+		U['imsize'], cell = U['cell'], options = U['invert_options']).snarf();
+	return tout;
 
 def make_clean(U):
 	TaskClean(map = U['map'], beam = U['beam'], out = U['model'], cutoff =
