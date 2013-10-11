@@ -7,7 +7,7 @@ import pylab as pl
 import os 
 import imp
 try:
-	im.find_module('mirexec');
+	imp.find_module('mirexec');
 	found = True;
 except ImportError:
 	found = False;
