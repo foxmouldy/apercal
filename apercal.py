@@ -1,6 +1,5 @@
 import re
 import aplpy
-import mirexec
 import sys 
 import pylab as pl
 import os 

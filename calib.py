@@ -1,10 +1,19 @@
 import re
 import aplpy
-import mirexec
-from mirexec import *
+#import mirexec
+#from mirexec import *
 import sys 
 import pylab as pl
 import os 
+import imp
+try:
+	im.find_module('mirexec');
+	found = True;
+except ImportError:
+	found = False;
+if found:
+	from mirexec import *
+	import mirexec
 
 def tkout(key, mirtout):
 	'''
