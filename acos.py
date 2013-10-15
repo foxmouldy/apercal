@@ -48,6 +48,7 @@ class status:
 				self.model = FA['model'];
 				self.map = FA['map'];
 				self.beam = FA['beam'];
+				self.image = FA['image'];
 				self.model4selfcal = FA['model4selfcal']
 				self.imsize = int(FA['imsize']);
 				self.cell = int(FA['cell']);
