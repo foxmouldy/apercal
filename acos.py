@@ -100,5 +100,5 @@ class status:
 		F.write('niters='+str(self.niters)+'\n')
 		F.write('gt='+str(self.gt)+'\n')
 		F.write('invert_options='+self.invert_options+'\n')
-		F.write('selfcal_options'+self.selfcal_options+'\n')
+		F.write('selfcal_options='+self.selfcal_options+'\n')
 		F.close();
