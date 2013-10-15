@@ -65,13 +65,21 @@ def make_dirty(U):
 		U['imsize'], cell = U['cell'], options = U['invert_options']).snarf();
 	return tout;
 
-def make_clean(U):
-	TaskClean(map = U['map'], beam = U['beam'], out = U['model'], cutoff =
-		U['cutoff'], niters = U['niters']).run();
-	TaskRestore(model = U['model'], beam = U['beam'], map = U['map'], 
-		mode = 'residual', out = U['out']+'.res').run()
-	TaskRestore(model = U['model'], beam = U['beam'], map = U['map'], 
-		out = U['out']).run()
+def clean(U):
+	tout = [];
+	tout.append(TaskClean(map = U['map'], beam = U['beam'], out = U['model'], cutoff =
+		U['cutoff'], niters = U['niters']).snarf());
+	tout.append(TaskRestore(model = U['model'], beam = U['beam'], map = U['map'], 
+		mode = 'residual', out = U['out']+'.res').snarf());
+	tout.append(TaskRestore(model = U['model'], beam = U['beam'], map = U['map'], 
+		out = U['out']).snarf());
+	return tout;
+
+def clean_deeper(U):
+	tout = [];
+
+def selfcal(U):
+
 
 def read_inps(fname):
 	'''
@@ -87,3 +95,5 @@ def read_inps(fname):
 		U[k.strip()] = v.strip();
 	f.close();
 	return(U);
+
+

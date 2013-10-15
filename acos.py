@@ -48,6 +48,13 @@ class status:
 				self.map = FA['map'];
 				self.beam = FA['beam'];
 				self.model4selfcal = FA['model4selfcal']
+				self.imsize = int(FA['imsize']);
+				self.cell = int(FA['cell']);
+				self.cutoff = float(FA['cutoff']);
+				self.niters = float(FA['niters']);
+				self.gt = float(FA['gt']);
+				self.invert_options = FA['invert_options'];
+				self.selfcal_options = FA['selfcal_options']
 				F.close();
 		except IOError:
 			# Object Handling
@@ -58,6 +65,13 @@ class status:
 			self.map = name+'.map'+str(i);
 			self.beam = name+'.beam'+str(i);
 			self.model4selfcal = name+'.model4selfcal'+str(i);
+			self.imsize = 2000;
+			self.cell = 2; 
+			self.cutoff = 0.02; # Just a random default.
+			self.niters = 10000; 
+			self.gt = 0.01;
+			self.invert_options = 'mfs,double'
+			self.selfcal_options = 'mfs,amplitude'
 	
 	def update(self):
 		self.i +=1; 
@@ -66,7 +80,9 @@ class status:
 		self.map = self.name+'.map'+str(self.i);
 		self.beam = self.name+'.beam'+str(self.i);
 		self.model4selfcal = self.name+'.model4selfcal'+str(self.i);
-		
+		self.cutoff = self.cutoff/3.;
+		self.gt = self.gt/3.
+
 	def save(self):
 		fname = self.name+'.txt';
 		F = open(fname, 'w');
@@ -78,4 +94,11 @@ class status:
 		F.write('map='+self.map+'\n');
 		F.write('beam='+self.beam+'\n');
 		F.write('model4selfcal='+self.model4selfcal+'\n')
+		F.write('imsize='+str(self.imsize)+'\n');
+		F.write('cell='+str(self.cell)+'\n')
+		F.write('cutoff='+str(self.cutoff)+'\n')
+		F.write('niters='+str(self.niters)+'\n')
+		F.write('gt='+str(self.gt)+'\n')
+		F.write('invert_options='+self.invert_options+'\n')
+		F.write('selfcal_options'+self.selfcal_options+'\n')
 		F.close();
