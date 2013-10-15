@@ -64,6 +64,7 @@ class status:
 			self.model = name+'.model'+str(i);
 			self.map = name+'.map'+str(i);
 			self.beam = name+'.beam'+str(i);
+			self.image = name+'.image'+str(i);
 			self.model4selfcal = name+'.model4selfcal'+str(i);
 			self.imsize = 2000;
 			self.cell = 2; 
@@ -79,6 +80,7 @@ class status:
 		self.model = self.name+'.model'+str(self.i);
 		self.map = self.name+'.map'+str(self.i);
 		self.beam = self.name+'.beam'+str(self.i);
+		self.image = self.name+'.image'+str(self.i);
 		self.model4selfcal = self.name+'.model4selfcal'+str(self.i);
 		self.cutoff = self.cutoff/3.;
 		self.gt = self.gt/3.
@@ -93,6 +95,7 @@ class status:
 		F.write('model='+self.model+'\n');
 		F.write('map='+self.map+'\n');
 		F.write('beam='+self.beam+'\n');
+		F.write('image='+self.image+'\n');
 		F.write('model4selfcal='+self.model4selfcal+'\n')
 		F.write('imsize='+str(self.imsize)+'\n');
 		F.write('cell='+str(self.cell)+'\n')
