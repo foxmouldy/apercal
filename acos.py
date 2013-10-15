@@ -94,7 +94,7 @@ class status:
 		# Object Handling
 		F.write('name='+self.name+'\n');
 		F.write('i='+str(self.i)+'\n');
-		F.write('vis='+name+'\n');
+		F.write('vis='+self.name+'\n');
 		F.write('mask='+self.mask+'\n');
 		F.write('model='+self.model+'\n');
 		F.write('map='+self.map+'\n');
