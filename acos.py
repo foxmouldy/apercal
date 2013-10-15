@@ -77,6 +77,7 @@ class status:
 			self.invert_options = 'mfs,double'
 			#self.selfcal_options = 'mfs,amplitude'
 			self.selfcal_options = selfcal_options;
+
 	def update(self, selfcal_options=None):
 		self.i +=1; 
 		self.mask = self.name+'.mask'+str(self.i);
