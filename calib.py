@@ -78,9 +78,6 @@ def clean(U):
 def clean_deeper(U):
 	tout = [];
 
-def selfcal(U):
-
-
 def read_inps(fname):
 	'''
 	This reads in the inputs from the text file fname. Each line in the text file should
