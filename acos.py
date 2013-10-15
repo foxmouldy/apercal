@@ -30,7 +30,7 @@ def rm(tag=None):
 	os.system('rm -r '+tag)
 
 class status:
-	def __init__(self, name=None, i=1):
+	def __init__(self, name=None, i=1, selfcal_options='mfs,amplitude'):
 		fname = name+'.txt';
 		try:
 			with open(fname):
