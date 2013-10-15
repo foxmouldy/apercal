@@ -43,6 +43,7 @@ class status:
 				# Object Handling
 				self.name = FA['name'];
 				self.i = int(FA['i']);
+				self.vis = FA['vis']
 				self.mask = FA['mask'];
 				self.model = FA['model'];
 				self.map = FA['map'];
@@ -60,6 +61,7 @@ class status:
 			# Object Handling
 			self.name = name;
 			self.i = i;
+			self.vis = name;
 			self.mask = name+'.mask'+str(i);
 			self.model = name+'.model'+str(i);
 			self.map = name+'.map'+str(i);
@@ -76,6 +78,7 @@ class status:
 	
 	def update(self):
 		self.i +=1; 
+		self.vis = self.vis;
 		self.mask = self.name+'.mask'+str(self.i);
 		self.model = self.name+'.model'+str(self.i);
 		self.map = self.name+'.map'+str(self.i);
@@ -91,6 +94,7 @@ class status:
 		# Object Handling
 		F.write('name='+self.name+'\n');
 		F.write('i='+str(self.i)+'\n');
+		F.write('vis='+name+'\n');
 		F.write('mask='+self.mask+'\n');
 		F.write('model='+self.model+'\n');
 		F.write('map='+self.map+'\n');
