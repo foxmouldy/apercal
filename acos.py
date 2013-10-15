@@ -75,8 +75,8 @@ class status:
 			self.niters = 10000; 
 			self.gt = 0.01;
 			self.invert_options = 'mfs,double'
-			self.selfcal_options = 'mfs,amplitude'
-	
+			#self.selfcal_options = 'mfs,amplitude'
+			self.selfcal_options = selfcal_options;
 	def update(self):
 		self.i +=1; 
 		self.mask = self.name+'.mask'+str(self.i);
