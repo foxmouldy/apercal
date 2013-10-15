@@ -77,7 +77,7 @@ class status:
 			self.invert_options = 'mfs,double'
 			#self.selfcal_options = 'mfs,amplitude'
 			self.selfcal_options = selfcal_options;
-	def update(self):
+	def update(self, selfcal_options=None):
 		self.i +=1; 
 		self.mask = self.name+'.mask'+str(self.i);
 		self.model = self.name+'.model'+str(self.i);
@@ -87,7 +87,8 @@ class status:
 		self.model4selfcal = self.name+'.model4selfcal'+str(self.i);
 		self.cutoff = self.cutoff/3.;
 		self.gt = self.gt/3.
-		self.selfcal_options = self.selfcal_options;
+		if selfcal_options!=None:
+			self.selfcal_options = selfcal_options;
 
 	def save(self):
 		fname = self.name+'.txt';
