@@ -78,7 +78,6 @@ class status:
 	
 	def update(self):
 		self.i +=1; 
-		self.vis = self.vis;
 		self.mask = self.name+'.mask'+str(self.i);
 		self.model = self.name+'.model'+str(self.i);
 		self.map = self.name+'.map'+str(self.i);
