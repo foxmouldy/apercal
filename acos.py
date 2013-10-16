@@ -23,7 +23,7 @@ def pout(task=None, tout=None):
 	f.writelines('\n');
 	f.close();
 
-def taskout(task, snarf, tfilename):
+def taskout(task, tout, tfilename):
 	f = open(tfilename, 'w');
 	D = task.__dict__;
 	for d in D:
