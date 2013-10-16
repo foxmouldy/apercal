@@ -23,6 +23,17 @@ def pout(task=None, tout=None):
 	f.writelines('\n');
 	f.close();
 
+def taskout(task, snarf):
+	f = open(task+'.txt', 'a');
+	D = task.__dict__;
+	for d in D:
+		if D[str(d)]!=False:
+			outstring = d+'='+D[str(d)]+'; ';
+			f.writelines(outstring);
+	f.writelines('\n'+tout+'\n');
+	f.close();
+
+
 def rm(tag=None):
 	'''
 	Cleans up using a wildcard.
