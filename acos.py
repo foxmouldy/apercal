@@ -23,8 +23,8 @@ def pout(task=None, tout=None):
 	f.writelines('\n');
 	f.close();
 
-def taskout(task, snarf):
-	f = open(task+'.txt', 'a');
+def taskout(task, snarf, tfilename):
+	f = open(tfilename, 'a');
 	D = task.__dict__;
 	for d in D:
 		if D[str(d)]!=False:
