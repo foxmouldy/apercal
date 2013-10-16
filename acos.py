@@ -24,15 +24,15 @@ def pout(task=None, tout=None):
 	f.close();
 
 def taskout(task, snarf, tfilename):
-	f = open(tfilename, 'a');
+	f = open(tfilename, 'w');
 	D = task.__dict__;
 	for d in D:
 		if D[str(d)]!=False:
-			outstring = d+'='+D[str(d)]+'; ';
+			outstring = str(d)+'='+str(D[str(d)])+'\n';
 			f.writelines(outstring);
-	f.writelines('\n'+tout+'\n');
+	for t in tout[0]:
+            f.writelines(t+'\n');
 	f.close();
-
 
 def rm(tag=None):
 	'''
