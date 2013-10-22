@@ -6,6 +6,8 @@ import sys
 import pylab as pl
 import os 
 import imp
+import acos
+
 try:
 	imp.find_module('mirexec');
 	found = True;
@@ -14,6 +16,7 @@ except ImportError:
 if found:
 	from mirexec import *
 	import mirexec
+
 
 def tkout(key, mirtout):
 	'''
@@ -65,18 +68,6 @@ def make_dirty(U):
 		U['imsize'], cell = U['cell'], options = U['invert_options']).snarf();
 	return tout;
 
-def clean(U):
-	tout = [];
-	tout.append(TaskClean(map = U['map'], beam = U['beam'], out = U['model'], cutoff =
-		U['cutoff'], niters = U['niters']).snarf());
-	tout.append(TaskRestore(model = U['model'], beam = U['beam'], map = U['map'], 
-		mode = 'residual', out = U['out']+'.res').snarf());
-	tout.append(TaskRestore(model = U['model'], beam = U['beam'], map = U['map'], 
-		out = U['out']).snarf());
-	return tout;
-
-def clean_deeper(U):
-	tout = [];
 
 def read_inps(fname):
 	'''
@@ -92,5 +83,86 @@ def read_inps(fname):
 		U[k.strip()] = v.strip();
 	f.close();
 	return(U);
+
+def invert(settings, fname):
+	invert = mirexec.TaskInvert()
+	invert.vis = settings.name
+	invert.map = settings.map
+	invert.beam = settings.beam
+	invert.imsize = settings.imsize;
+	invert.cell = settings.cell;
+	invert.options=settings.invert_options;
+	tout = invert.snarf()
+	acos.taskout(invert, tout, fname);
+
+def clean(settings, fname):
+	clean = mirexec.TaskClean()
+	clean.map = settings.map;
+	clean.beam = settings.beam;
+	clean.out = settings.model;
+	clean.cutoff = round(settings.cutoff, 6);
+	clean.niters = settings.niters;
+	tout = clean.snarf()
+	acos.taskout(clean, tout, fname);
+
+def restorim(settings, fname, mode='clean'):
+	restor = mirexec.TaskRestore();
+	restor.model = settings.model;
+	restor.map = settings.map;
+	restor.beam = settings.beam;
+	restor.out = settings.image;
+	restor.mode = mode;
+	tout = restor.snarf();
+	acos.taskout(restor, tout, fname);
+
+def restores(settings, fname, mode='residual'):
+	restor = mirexec.TaskRestore();
+	restor.model = settings.model;
+	restor.map = settings.map;
+	restor.beam = settings.beam;
+	restor.out = settings.res;
+	restor.mode = mode;
+	tout = restor.snarf();
+	acos.taskout(restor, tout, fname);
+
+def maths(settings, fname):
+	settings.gt = round(settings.gt,6);
+	maths = mirexec.TaskMaths();
+	maths.exp = settings.image;
+	maths.mask = settings.image+'.gt.'+str(settings.gt);
+	maths.out = settings.mask;
+	tout = maths.snarf();
+	acos.taskout(maths, tout, fname);
+
+def clean_deeper(settings, fname, df=3):
+	'''
+	Runs clean using the mask. The settings.cutoff is divided by df. 
+	'''
+	clean = mirexec.TaskClean()
+	clean.map = settings.map;
+	clean.beam = settings.beam;
+	clean.region = 'mask('+settings.mask+')';
+	clean.out = settings.model4selfcal;
+	clean.cutoff = round(settings.cutoff/df,6);
+	clean.niters = settings.niters;
+	tout = clean.snarf()
+	acos.taskout(clean, tout, fname);
+
+def imstat(image, fname):
+	'''
+	Performs imstat on settings.image
+	'''
+	imstat = mirexec.TaskImStat();
+	imstat.in_ = image;
+	tout = imstat.snarf();
+	acos.taskout(imstat, tout, fname);
+
+def selfcal(settings, fname):
+	selfcal = mirexec.TaskSelfCal()
+	selfcal.vis = settings.vis;
+	selfcal.options = settings.selfcal_options;
+	selfcal.model = settings.model4selfcal;
+	tout = selfcal.snarf();
+	acos.taskout(selfcal, tout, fname);
 
 
