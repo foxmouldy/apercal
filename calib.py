@@ -142,7 +142,7 @@ def clean_deeper(settings, fname, df=3):
 	clean.map = settings.map;
 	clean.beam = settings.beam;
 	clean.region = 'mask('+settings.mask+')';
-	clean.out = settings.model4selfcal;
+	clean.out = settings.m4s;
 	clean.cutoff = round(settings.cutoff/df,6);
 	clean.niters = settings.niters;
 	tout = clean.snarf()
@@ -161,8 +161,37 @@ def selfcal(settings, fname):
 	selfcal = mirexec.TaskSelfCal()
 	selfcal.vis = settings.vis;
 	selfcal.options = settings.selfcal_options;
-	selfcal.model = settings.model4selfcal;
+	selfcal.model = settings.m4s;
 	tout = selfcal.snarf();
 	acos.taskout(selfcal, tout, fname);
 
+def infits(I, O):
+	'''
+	Reads in the uvfits file I and exports it to the miriad-uv file O,
+	using the carma-miriad task wsrtfits.
+	'''
+	cmd = 'wsrtfits in='+I+' out='+O+' op=uvin velocity=optbary';
+	print "Import "+I+" -> "+O;
+	os.system(cmd);
+	print "Tsys Calibration on "+O;
+	cmd = 'attsys vis='+O+' out=_tmp_vis';
+	os.system(cmd);
+	cmd = 'mv _tmp_vis '+O;
+	os.system(cmd);
+	uvflag = mirexec.TaskUVFlag();
+	uvflag.vis = O;
+	uvflag.select = 'auto,or,shadow(27),or,ant(6)';
+	uvflag.flagval = 'flag';
+	tout = uvflag.snarf();
+	acos.taskout(uvflag, tout, 'uvflag.txt')
+	print "Done."
 
+def calcals(cals):
+	mfcal = mirexec.TaskMfcal();
+	for c in cals:
+		mfcal.vis = c;
+		mfcal.interval = 1000000.;
+		tout = mfcal.snarf();
+		acos.taskout(mfcal, tout, 'mfcal.txt');
+		print "MFCAL Done on "+c;
+		

@@ -162,3 +162,4 @@ class settings:
 		F.write('invert_options='+self.invert_options+'\n')
 		F.write('selfcal_options='+self.selfcal_options+'\n')
 		F.close();
+		
