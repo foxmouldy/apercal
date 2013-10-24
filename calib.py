@@ -100,7 +100,7 @@ def clean(settings, fname):
 	clean.map = settings.map;
 	clean.beam = settings.beam;
 	clean.out = settings.model;
-	clean.cutoff = round(settings.cutoff, 6);
+	clean.cutoff = round(settings.cutoff, 10);
 	clean.niters = settings.niters;
 	tout = clean.snarf()
 	acos.taskout(clean, tout, fname);
@@ -126,7 +126,7 @@ def restores(settings, fname, mode='residual'):
 	acos.taskout(restor, tout, fname);
 
 def maths(settings, fname):
-	settings.gt = round(settings.gt,6);
+	settings.gt = round(settings.gt,10);
 	maths = mirexec.TaskMaths();
 	maths.exp = settings.image;
 	maths.mask = settings.image+'.gt.'+str(settings.gt);
@@ -143,7 +143,7 @@ def clean_deeper(settings, fname, df=3):
 	clean.beam = settings.beam;
 	clean.region = 'mask('+settings.mask+')';
 	clean.out = settings.m4s;
-	clean.cutoff = round(settings.cutoff/df,6);
+	clean.cutoff = round(settings.cutoff/df,10);
 	clean.niters = settings.niters;
 	tout = clean.snarf()
 	acos.taskout(clean, tout, fname);
@@ -165,7 +165,7 @@ def selfcal(settings, fname):
 	tout = selfcal.snarf();
 	acos.taskout(selfcal, tout, fname);
 
-def infits(I, O):
+def iofits(I, O):
 	'''
 	Reads in the uvfits file I and exports it to the miriad-uv file O,
 	using the carma-miriad task wsrtfits.
@@ -175,6 +175,8 @@ def infits(I, O):
 	os.system(cmd);
 	print "Tsys Calibration on "+O;
 	cmd = 'attsys vis='+O+' out=_tmp_vis';
+	os.system(cmd);
+	cmd = 'rm -r '+O;
 	os.system(cmd);
 	cmd = 'mv _tmp_vis '+O;
 	os.system(cmd);
@@ -187,11 +189,73 @@ def infits(I, O):
 	print "Done."
 
 def calcals(cals):
-	mfcal = mirexec.TaskMfcal();
+	mfcal = mirexec.TaskMfCal();
 	for c in cals:
 		mfcal.vis = c;
 		mfcal.interval = 1000000.;
 		tout = mfcal.snarf();
 		acos.taskout(mfcal, tout, 'mfcal.txt');
 		print "MFCAL Done on "+c;
-		
+	
+def cal2srcs(cals, srcs):
+	'''
+	Cals = 'cal1,cal2'
+	Srcs = 'src1,src2'
+	'''
+	#cals = cals.split(',');
+	#srcs = srcs.split(',');
+	# uvcat on src files
+	try:
+		with open(srcs[2]):
+			isthere=True;
+	except IOError:
+		isthere=False;
+
+	if isthere==True:
+		uvcat = mirexec.TaskUVCat();
+		uvcat.vis = srcs[0]+','+srcs[1];
+		uvcat.out = srcs[2];
+		tout = uvcat.snarf();
+		acos.taskout(uvcat, tout, 'cal2srcs.txt');
+	
+	# gpcopy cal1 -> src
+	gpcopy  = mirexec.TaskGPCopy();
+	gpcopy.vis = cals[0];
+	gpcopy.out = srcs[2];
+	tout = gpcopy.snarf();
+	acos.taskout(gpcopy, tout, 'cal2srcs.txt');
+	
+	# gpcopy cal2 -> src
+	gpcopy  = mirexec.TaskGPCopy();
+	gpcopy.vis = cals[1];
+	gpcopy.out = srcs[2];
+	gpcopy.mode = 'merge'; 
+	gpcopy.options = 'nopass';
+	tout = gpcopy.snarf();
+	acos.taskout(gpcopy, tout, 'cal2srcs.txt');
+
+	# puthd on src
+	puthd = mirexec.TaskPutHead();
+	puthd.in_ = srcs[2]+'/restfreq';
+	puthd.value = 1.420405752;
+	tout = puthd.snarf();
+	acos.taskout(puthd, tout, 'cal2srcs.txt');
+	
+	puthd.in_ = srcs[2]+'/interval'
+	puthd.value = 1.0
+	puthd.type = 'double'
+	tout = puthd.snarf();
+	acos.taskout(puthd, tout, 'cal2srcs.txt');
+
+def specr(f, S):
+	'''
+	Uses uvaver to cut-out a spectral range. 
+	'''
+	uvaver = mirexec.TaskUVAver();
+	uvaver.vis = f; 
+	uvaver.line = S.line;
+	uvaver.out = '_tmp_specr'
+	tout = uvaver.snarf();
+	os.system('rm -r '+f);
+	os.system('mv _tmp_specr '+f)
+	acos.taskout(uvaver, tout, 'uvaver.txt');

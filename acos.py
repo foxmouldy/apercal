@@ -44,7 +44,7 @@ def rm(tag=None):
 
 class settings:
 	def __init__(self, name=None, cal1='cal1', cal2='cal2',
-	src1='src1', spw='channel,1000,1,1,1', src2='src2', i=1, selfcal_options='mfs,phase', 
+	src1='src1', line='channel,1000,1,1,1', src2='src2', i=1, N=0, selfcal_options='mfs,phase', 
 	selfcal_select='uvrange(0.5,10000)', gt=0.001, cutoff=None,
 	overwrite=False):
 
@@ -66,8 +66,9 @@ class settings:
 				self.cal2 = FA['cal2'];
 				self.src1 = FA['src1'];
 				self.src2 = FA['src2'];
-				self.spw = FA['spw'];
+				self.line = FA['line'];
 				self.i = int(FA['i']);
+				self.N = int(FA['N']);
 				self.vis = FA['vis']
 				self.mask = FA['mask'];
 				self.model = FA['model'];
@@ -80,14 +81,14 @@ class settings:
 				self.cell = int(FA['cell']);
 				self.selfcal_select = FA['selfcal_select'];
 				if cutoff!=None:
-					self.cutoff = round(cutoff, 6);
+					self.cutoff = round(cutoff, 10);
 				else:
-					self.cutoff = round(float(FA['cutoff']), 6);
+					self.cutoff = round(float(FA['cutoff']), 10);
 				self.niters = float(FA['niters']);
 				if gt!=None:
 					self.gt=gt;
 				else:
-					self.gt = round(float(FA['gt']),6);
+					self.gt = round(float(FA['gt']),10);
 				self.invert_options = FA['invert_options'];
 				if selfcal_options!=None:
 					self.selfcal_options=selfcal_options;
@@ -101,8 +102,9 @@ class settings:
 			self.cal2 = cal2;
 			self.src1 = src1;
 			self.src2 = src2;
-			self.spw = spw;
+			self.line = line;
 			self.i = i;
+			self.N = N;
 			self.vis = name;
 			self.mask = name+'.mask'+str(i);
 			self.model = name+'.model'+str(i);
@@ -115,13 +117,15 @@ class settings:
 			self.cell = 2; 
 			self.cutoff = 0.02; # Just a random default.
 			self.niters = 10000; 
-			self.gt = round(gt,6);
+			self.gt = round(gt,10);
 			self.invert_options = 'mfs,double'
 			self.selfcal_options = selfcal_options;
 			self.selfcal_select = selfcal_select;
 
 	def update(self, selfcal_options=None):
 		self.i +=1;
+		if self.N>0:
+			self.N -=1;
 		df = 2.+1./(self.i+1);
 		self.mask = self.name+'.mask'+str(self.i);
 		self.model = self.name+'.model'+str(self.i);
@@ -130,8 +134,8 @@ class settings:
 		self.image = self.name+'.image'+str(self.i);
 		self.res = self.name+'.res'+str(self.i);
 		self.m4s = self.name+'.m4s'+str(self.i);
-		self.cutoff = round(self.cutoff/df, 6);
-		self.gt = round(self.gt/df, 6)
+		self.cutoff = round(self.cutoff/df, 10);
+		self.gt = round(self.gt/df, 10)
 		if selfcal_options!=None:
 			self.selfcal_options = selfcal_options;
 
@@ -144,8 +148,9 @@ class settings:
 		F.write('cal2='+self.cal2+'\n')
 		F.write('src1='+self.src1+'\n')
 		F.write('src2='+self.src2+'\n')
-		F.write('spw='+self.spw+'\n')
+		F.write('line='+self.line+'\n')
 		F.write('i='+str(self.i)+'\n');
+		F.write('N='+str(self.N)+'\n');
 		F.write('vis='+self.name+'\n');
 		F.write('mask='+self.mask+'\n');
 		F.write('model='+self.model+'\n');
@@ -156,10 +161,11 @@ class settings:
 		F.write('m4s='+self.m4s+'\n')
 		F.write('imsize='+str(self.imsize)+'\n');
 		F.write('cell='+str(self.cell)+'\n')
-		F.write('cutoff='+str(round(self.cutoff,6))+'\n')
+		F.write('cutoff='+str(round(self.cutoff,10))+'\n')
 		F.write('niters='+str(self.niters)+'\n')
-		F.write('gt='+str(round(self.gt,6))+'\n')
+		F.write('gt='+str(round(self.gt,10))+'\n')
 		F.write('invert_options='+self.invert_options+'\n')
 		F.write('selfcal_options='+self.selfcal_options+'\n')
+		F.write('selfcal_select='+self.selfcal_select+'\n')
 		F.close();
 		
