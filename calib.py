@@ -205,13 +205,14 @@ def cal2srcs(cals, srcs):
 	#cals = cals.split(',');
 	#srcs = srcs.split(',');
 	# uvcat on src files
-	try:
-		with open(srcs[2]):
-			isthere=True;
-	except IOError:
-		isthere=False;
-
-	if isthere==True:
+	if os.path.exists(srcs[2])==False:
+	#try:
+	#	with open(srcs[2]):
+	#		isthere=True;
+	#except IOError:
+	#	isthere=False;
+	#
+	#if isthere==False:
 		uvcat = mirexec.TaskUVCat();
 		uvcat.vis = srcs[0]+','+srcs[1];
 		uvcat.out = srcs[2];
