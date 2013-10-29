@@ -69,20 +69,20 @@ def make_dirty(U):
 	return tout;
 
 
-def read_inps(fname):
-	'''
-	This reads in the inputs from the text file fname. Each line in the text file should
-	contain the desired user-input. For example:
-	spw = 0:100~200
-	will produce ui['spw'] = '0:100~200'
-	'''
-	f = open(fname, 'r');
-	U = {};
-	for line in f:
-		k,v = line.strip().split('=');
-		U[k.strip()] = v.strip();
-	f.close();
-	return(U);
+#def read_inps(fname):
+#	'''
+#	This reads in the inputs from the text file fname. Each line in the text file should
+#	contain the desired user-input. For example:
+#	spw = 0:100~200
+#	will produce ui['spw'] = '0:100~200'
+#	'''
+#	f = open(fname, 'r');
+#	U = {};
+#	for line in f:
+#		k,v = line.strip().split('=');
+#		U[k.strip()] = v.strip();
+#	f.close();
+#	return(U);
 
 def invert(settings, fname):
 	invert = mirexec.TaskInvert()
@@ -187,6 +187,20 @@ def iofits(I, O):
 	tout = uvflag.snarf();
 	acos.taskout(uvflag, tout, 'uvflag.txt')
 	print "Done."
+
+def exfits(I, O):
+	'''
+	Reads in the 
+	'''
+	print "Exporting "+I+" to "+O;
+	fits = mirexec.TaskFits();
+	fits.in_ = I;
+	fits.out = O;
+	fits.op = 'uvout';
+	tout = fits.snarf();
+	acos.taskout(fits, tout, 'fits.txt');
+	
+
 
 def calcals(cals):
 	mfcal = mirexec.TaskMfCal();

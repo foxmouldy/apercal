@@ -13,6 +13,9 @@ parser = OptionParser(usage=usage);
 parser.add_option("--uvfiles", "-u", type = 'string', dest = 'uvfiles', default=None, 
 	help = 'CSV List of input UV files');
 
+parser.add_option("--spw", "-s", type = 'string', dest = 'spw', default=None, 
+	help = 'Spectral window to extract for work. ');
+
 (options, args) = parser.parse_args();
 
 if len(sys.argv)==1: 
@@ -20,11 +23,11 @@ if len(sys.argv)==1:
 	dummy = sys.exit(0);
 
 uvfiles = options.uvfiles.split(',');
-spw = '0:300~600';
+spw = '0:600~900';
 
 for u in uvfiles:
-	vis = u.replace('.UVF', '.MS');
-	uvfitsout = u.replace('.UVF','.UVfl')
+	vis = u.replace('.muvfits', '.MS');
+	uvfitsout = u.replace('.muvfits','.uvfl')
 	#1 First, import the uvfits file. 
 	importuvfits(fitsfile=u, vis=vis);
 	

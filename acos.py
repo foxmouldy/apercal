@@ -43,7 +43,7 @@ def rm(tag=None):
 	os.system('rm -r '+tag)
 
 class settings:
-	def __init__(self, uvfiles='c1,c2,t1,t2', name=None, cal1='cal1', cal2='cal2',
+	def __init__(self, uvfiles='c1,c2,t1,t2', name=None, tag='.UVF', retag='uv', cal1='cal1', cal2='cal2',
 	src1='src1', line='channel,1000,1,1,1', src2='src2', i=1, N=0, selfcal_options='mfs,phase', 
 	selfcal_select='uvrange(0.5,10000)', gt=0.001, cutoff=None,
 	overwrite=False):
@@ -62,6 +62,8 @@ class settings:
 					FA[f[0]] = f[1];
 				# Object Handling
 				self.uvfiles = FA['uvfiles'];
+				self.tag = FA['tag'];
+				self.retag = FA['retag'];
 				self.name = FA['name'];
 				self.cal1 = FA['cal1'];
 				self.cal2 = FA['cal2'];
@@ -90,6 +92,8 @@ class settings:
 		except IOError:
 			# Object Handling
 			self.uvfiles = uvfiles;
+			self.tag = tag;
+			self.retag = retag;
 			self.name = name;
 			self.cal1 = cal1;
 			self.cal2 = cal2;
@@ -137,6 +141,8 @@ class settings:
 		F = open(fname, 'w');
 		# Object Handling
 		F.write('uvfiles='+self.uvfiles+'\n');
+		F.write('tag='+self.tag+'\n')
+		F.write('retag='+self.retag+'\n');
 		F.write('name='+self.name+'\n');
 		F.write('cal1='+self.cal1+'\n')
 		F.write('cal2='+self.cal2+'\n')

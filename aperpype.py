@@ -76,16 +76,18 @@ def iof():
 	#if S.i==0:
 	uvfiles = S.uvfiles;
 	for u in uvfiles.split(','):
-		calib.iofits(u, u.replace('.UVF', '.uv'));
+		calib.iofits2(u, u.replace('.UVfl', '.uv'));
 
 def inical():
 	
 	#uvfiles = 'c1.UVF,c2.UVF,t1.UVF,t2.UVF'
 	uvfiles = S.uvfiles;
+	print uvfiles
+	sys.exit(0);
 	#1 Read in the files and do an initial calibration with calib.infits
 	if S.i==0:
 		for u in uvfiles.split(','):
-			calib.specr(u.replace('.UVF','.uv'), S)
+			calib.specr(u.replace('.UVfl','.uv'), S)
 	
 	#2 Run calib.calcals on the calibrator files. 
 		calib.calcals([S.cal1,S.cal2]);
