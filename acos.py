@@ -48,7 +48,7 @@ class settings:
 	selfcal_select='uvrange(0.5,10000)', gt=0.001, cutoff=None,
 	overwrite=False):
 
-		fname = name+'.txt';
+		fname = name+'.dat';
 		if overwrite==True:
 			os.system('rm '+fname)
 
@@ -137,7 +137,7 @@ class settings:
 			self.selfcal_options = selfcal_options;
 
 	def save(self):
-		fname = self.name+'.txt';
+		fname = self.name+'.dat';
 		F = open(fname, 'w');
 		# Object Handling
 		F.write('uvfiles='+self.uvfiles+'\n');

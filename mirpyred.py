@@ -55,7 +55,7 @@ def decal(S):
 	calib.clean_deeper(S, 'clean.txt')#, df=2.);
 
 def sc(S):
-	if S.N/S.i==2:
+	if S.N/(S.i+1)==2:
 		S.selfcal_options='mfs'
 	calib.selfcal(S, 'selfcal.txt');
 
@@ -94,8 +94,8 @@ def exf():
 	fits = mirexec.TaskFits();
 	uvfiles = S.uvfiles;
 	for u in uvfiles.split(','):
-		infile = u.replace(S.tag, '.uv');
-		outfile = u.replace(S.tag, '.muvfits');
+		infile = u.replace(S.tag, S.retag);
+		outfile = u.replace(S.tag, 'muvfits');
 		calib.exfits(infile, outfile);	
 
 def inical():
@@ -106,7 +106,7 @@ def inical():
 	if S.i==0:
 		if S.line.upper()!='NONE': 
 			for u in uvfiles.split(','):
-				calib.specr(r.replace(S.tag,S.retag), S)
+				calib.specr(u.replace(S.tag,S.retag), S)
 	
 	#2 Run calib.calcals on the calibrator files. 
 		calib.calcals([S.cal1,S.cal2]);
@@ -121,6 +121,8 @@ def inical():
 	# First Dirty Map
 	print "0th Loop....... \n -------"
 	gocal(S)
+	S.update(selfcal_options='mfs,amplitude')
+	S.save();	
 	S.m4s = S.model;
 	sc(S);
 	S.update(selfcal_options='mfs,amplitude')
