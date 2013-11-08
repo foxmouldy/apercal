@@ -143,7 +143,7 @@ def clean_deeper(settings, fname, df=3):
 	clean.beam = settings.beam;
 	clean.region = 'mask('+settings.mask+')';
 	clean.out = settings.m4s;
-	clean.cutoff = round(settings.cutoff/df,10);
+	clean.cutoff = settings.cutoff;
 	clean.niters = settings.niters;
 	tout = clean.snarf()
 	acos.taskout(clean, tout, fname);

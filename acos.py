@@ -43,7 +43,8 @@ def rm(tag=None):
 	os.system('rm -r '+tag)
 
 class settings:
-	def __init__(self, uvfiles='c1,c2,t1,t2', name=None, tag='.UVF', retag='uv', cal1='cal1', cal2='cal2',
+	def __init__(self, uvfiles='c1,c2,t1,t2', name=None, tag='.UVF',
+	retag='.uv', cal1='cal1', cal2='cal2',
 	src1='src1', line='channel,1000,1,1,1', src2='src2', i=1, N=0, selfcal_options='mfs,phase', 
 	selfcal_select='uvrange(0.5,10000)', gt=0.001, cutoff=None,
 	overwrite=False):
@@ -131,8 +132,8 @@ class settings:
 		self.image = self.name+'.image'+str(self.i);
 		self.res = self.name+'.res'+str(self.i);
 		self.m4s = self.name+'.m4s'+str(self.i);
-		self.cutoff = round(self.cutoff/df, 10);
-		self.gt = round(self.gt/df, 10)
+		#self.cutoff = round(self.cutoff/df, 10);
+		#self.gt = round(self.gt/df, 10)
 		if selfcal_options!=None:
 			self.selfcal_options = selfcal_options;
 
