@@ -64,7 +64,7 @@ def exportms():
 		for m in files:
 			ext = m.split('.')[1];
 			vis = m;
-			fitsfile = m.replace(ext, 'uvfits');
+			fitsfile = m.replace(ext, '.uvfits2');
 			datacolumn='data';
 			exportuvfits(vis=vis, fitsfile=fitsfile, spw=spw);
 			print "Exported "+vis+" to "+fitsfile;
