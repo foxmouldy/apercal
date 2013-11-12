@@ -47,7 +47,7 @@ class settings:
 	retag='.uv', cal1='cal1', cal2='cal2',
 	src1='src1', line='channel,1000,1,1,1', src2='src2', i=1, N=0, selfcal_options='mfs,phase', 
 	selfcal_select='uvrange(0.5,10000)', gt=0.001, cutoff=None,
-	overwrite=False):
+	selfcal_interval=5., overwrite=False):
 
 		fname = name+'.dat';
 		if overwrite==True:
@@ -89,6 +89,7 @@ class settings:
 				self.gt = round(float(FA['gt']),10);
 				self.invert_options = FA['invert_options'];
 				self.selfcal_options = FA['selfcal_options']
+				self.selfcal_interval = FA['selfcal_interval'];
 				F.close();
 		except IOError:
 			# Object Handling
@@ -119,7 +120,7 @@ class settings:
 			self.invert_options = 'mfs,double'
 			self.selfcal_options = selfcal_options;
 			self.selfcal_select = selfcal_select;
-
+			self.selfcal_interval = selfcal_interval;
 	def update(self, selfcal_options=None):
 		self.i +=1;
 		if self.N>0:
@@ -168,5 +169,6 @@ class settings:
 		F.write('invert_options='+self.invert_options+'\n')
 		F.write('selfcal_options='+self.selfcal_options+'\n')
 		F.write('selfcal_select='+self.selfcal_select+'\n')
+		F.write('selfcal_interval='+str(self.selfcal_interval)+'\n');
 		F.close();
 		

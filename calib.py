@@ -68,22 +68,6 @@ def make_dirty(U):
 		U['imsize'], cell = U['cell'], options = U['invert_options']).snarf();
 	return tout;
 
-
-#def read_inps(fname):
-#	'''
-#	This reads in the inputs from the text file fname. Each line in the text file should
-#	contain the desired user-input. For example:
-#	spw = 0:100~200
-#	will produce ui['spw'] = '0:100~200'
-#	'''
-#	f = open(fname, 'r');
-#	U = {};
-#	for line in f:
-#		k,v = line.strip().split('=');
-#		U[k.strip()] = v.strip();
-#	f.close();
-#	return(U);
-
 def invert(settings, fname):
 	invert = mirexec.TaskInvert()
 	invert.vis = settings.name
@@ -162,6 +146,7 @@ def selfcal(settings, fname):
 	selfcal.vis = settings.vis;
 	selfcal.options = settings.selfcal_options;
 	selfcal.model = settings.m4s;
+	selfcal.interval = settings.selfcal_interval;
 	tout = selfcal.snarf();
 	acos.taskout(selfcal, tout, fname);
 

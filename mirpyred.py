@@ -35,7 +35,7 @@ if len(sys.argv)==1:
 #p2w = '/home/frank/ngc3998/02-May-11/working/'
 p2w = os.getcwd();
 
-def cleanup(T):
+def cleanup():
 	'''
 	
 	'''
@@ -49,21 +49,21 @@ def cleanup(T):
 	os.system('rm -r '+S.name+'.m4s*')
 	
 
-def clean(S):
+def clean():
 	calib.invert(S, 'invert.txt');
 	calib.clean(S, 'clean.txt');
 	calib.restorim(S, 'restor.txt');
 	calib.restores(S, 'restor.txt');
 
-def restorimres(S):
+def restorimres():
 	calib.restorim(S, 'restor.txt');
 	calib.restores(S, 'restor.txt');
 
-def clean_deeper(S):
+def clean_deeper():
 	calib.maths(S, 'maths.txt');
 	calib.clean_deeper(S, 'clean.txt')#, df=2.);
 
-def sc(S):
+def sc():
 	#if S.N/(S.i+1)==2:
 	#	S.selfcal_options='mfs'
 	calib.selfcal(S, 'selfcal.txt');
@@ -185,8 +185,9 @@ def scloop():
 	#pl.close();
 
 if options.calls!=None:
+	gets();
+	print S.name
 	for c in options.calls.split(','):
-		gets();
 		#print c+'\n';
 		cmd = c+'('+options.args+')';
 		print cmd;
