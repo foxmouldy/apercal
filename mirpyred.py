@@ -55,7 +55,7 @@ def clean():
 	calib.restorim(S, 'restor.txt');
 	calib.restores(S, 'restor.txt');
 
-def restorimres():
+def rimres():
 	calib.restorim(S, 'restor.txt');
 	calib.restores(S, 'restor.txt');
 
