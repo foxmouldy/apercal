@@ -76,6 +76,7 @@ def invert(settings, fname):
 	invert.imsize = settings.imsize;
 	invert.cell = settings.cell;
 	invert.options=settings.invert_options;
+	invert.robust = settings.robust;
 	tout = invert.snarf()
 	acos.taskout(invert, tout, fname);
 
@@ -226,13 +227,13 @@ def cal2srcs(cals, srcs):
 	acos.taskout(gpcopy, tout, 'cal2srcs.txt');
 	
 	# gpcopy cal2 -> src
-	gpcopy  = mirexec.TaskGPCopy();
-	gpcopy.vis = cals[1];
-	gpcopy.out = srcs[2];
-	gpcopy.mode = 'merge'; 
-	gpcopy.options = 'nopass';
-	tout = gpcopy.snarf();
-	acos.taskout(gpcopy, tout, 'cal2srcs.txt');
+	#gpcopy  = mirexec.TaskGPCopy();
+	#gpcopy.vis = cals[1];
+	#gpcopy.out = srcs[2];
+	#gpcopy.mode = 'merge'; 
+	#gpcopy.options = 'nopass';
+	#tout = gpcopy.snarf();
+	#acos.taskout(gpcopy, tout, 'cal2srcs.txt');
 
 	# puthd on src
 	puthd = mirexec.TaskPutHead();

@@ -47,7 +47,7 @@ class settings:
 	retag='.uv', cal1='cal1', cal2='cal2',
 	src1='src1', line='channel,1000,1,1,1', src2='src2', i=1, N=0, selfcal_options='mfs,phase', 
 	selfcal_select='uvrange(0.5,10000)', gt=0.001, cutoff=None,
-	selfcal_interval=5., overwrite=False):
+	robust=2.0, selfcal_interval=5., overwrite=False):
 
 		fname = name+'.dat';
 		if overwrite==True:
@@ -88,6 +88,7 @@ class settings:
 				self.niters = float(FA['niters']);
 				self.gt = round(float(FA['gt']),10);
 				self.invert_options = FA['invert_options'];
+				self.robust = FA['robust'];
 				self.selfcal_options = FA['selfcal_options']
 				self.selfcal_interval = FA['selfcal_interval'];
 				F.close();
@@ -118,6 +119,7 @@ class settings:
 			self.niters = 10000; 
 			self.gt = round(gt,10);
 			self.invert_options = 'mfs,double'
+			self.robust = 2.0;
 			self.selfcal_options = selfcal_options;
 			self.selfcal_select = selfcal_select;
 			self.selfcal_interval = selfcal_interval;
@@ -167,6 +169,7 @@ class settings:
 		F.write('niters='+str(self.niters)+'\n')
 		F.write('gt='+str(round(self.gt,10))+'\n')
 		F.write('invert_options='+self.invert_options+'\n')
+		F.write('robust='+self.robust+'\n')
 		F.write('selfcal_options='+self.selfcal_options+'\n')
 		F.write('selfcal_select='+self.selfcal_select+'\n')
 		F.write('selfcal_interval='+str(self.selfcal_interval)+'\n');

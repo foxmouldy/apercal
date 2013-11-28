@@ -62,6 +62,9 @@ def rimres():
 def clean_deeper():
 	calib.maths(S, 'maths.txt');
 	calib.clean_deeper(S, 'clean.txt')#, df=2.);
+	S.image = S.image.replace('image','image4s')
+	S.res = S.res.replace('res','res4s')
+	rimres();
 
 def sc():
 	#if S.N/(S.i+1)==2:
@@ -183,6 +186,36 @@ def scloop():
 	#pl.plot(pl.log10(X['f1']))
 	#pl.savefig('sc_summary.png', dpi=300)
 	#pl.close();
+
+def specr():
+	'''
+	Removes the specified spectral window from the uv file. 
+	'''
+
+def fp_models(ppoly,fpoly,model):
+	'''
+	Uses the vertices defined in pgon to  
+	'''
+	maths = mirexec.TaskMaths();
+	maths.exp = model;
+	maths.mask = model;
+	maths.region=ppoly;
+	maths.out=model.replace("src","src_p");
+	tout = restor.snarf();
+	acos.taskout(maths,tout,'maths.txt');
+	
+	maths = mirexec.TaskMaths();
+	maths.exp = model;
+	maths.mask = model;
+	maths.region=fpoly;
+	maths.out=model.replace("src","src_f");
+	tout = restor.snarf();
+	acos.taskout(maths,tout,'maths.txt');
+
+def update():
+	S.update();
+	S.save();
+	print "Updated!"
 
 if options.calls!=None:
 	gets();
