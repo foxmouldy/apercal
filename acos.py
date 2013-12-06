@@ -47,7 +47,7 @@ class settings:
 	retag='.uv', cal1='cal1', cal2='cal2',
 	src1='src1', line='channel,1000,1,1,1', src2='src2', i=1, N=0, selfcal_options='mfs,phase', 
 	selfcal_select='uvrange(0.5,10000)', gt=0.001, cutoff=None,
-	robust=2.0, selfcal_interval=5., overwrite=False):
+	robust=2.0, selfcal_interval=5., overwrite=False, flags='auto,an(6),shadow(25)'):
 
 		fname = name+'.dat';
 		if overwrite==True:
@@ -91,6 +91,7 @@ class settings:
 				self.robust = FA['robust'];
 				self.selfcal_options = FA['selfcal_options']
 				self.selfcal_interval = FA['selfcal_interval'];
+				self.flags = FA['flags']
 				F.close();
 		except IOError:
 			# Object Handling
@@ -123,6 +124,7 @@ class settings:
 			self.selfcal_options = selfcal_options;
 			self.selfcal_select = selfcal_select;
 			self.selfcal_interval = selfcal_interval;
+			self.flags = flags;
 	def update(self, selfcal_options=None):
 		self.i +=1;
 		if self.N>0:
@@ -135,8 +137,6 @@ class settings:
 		self.image = self.name+'.image'+str(self.i);
 		self.res = self.name+'.res'+str(self.i);
 		self.m4s = self.name+'.m4s'+str(self.i);
-		#self.cutoff = round(self.cutoff/df, 10);
-		#self.gt = round(self.gt/df, 10)
 		if selfcal_options!=None:
 			self.selfcal_options = selfcal_options;
 
@@ -166,12 +166,13 @@ class settings:
 		F.write('imsize='+str(self.imsize)+'\n');
 		F.write('cell='+str(self.cell)+'\n')
 		F.write('cutoff='+str(round(self.cutoff,10))+'\n')
-		F.write('niters='+str(self.niters)+'\n')
+		F.write('niters='+str(int(self.niters))+'\n')
 		F.write('gt='+str(round(self.gt,10))+'\n')
 		F.write('invert_options='+self.invert_options+'\n')
 		F.write('robust='+self.robust+'\n')
 		F.write('selfcal_options='+self.selfcal_options+'\n')
 		F.write('selfcal_select='+self.selfcal_select+'\n')
 		F.write('selfcal_interval='+str(self.selfcal_interval)+'\n');
+		F.write('flags='+self.flags+'\n');
 		F.close();
 		

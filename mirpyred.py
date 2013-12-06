@@ -1,6 +1,6 @@
 import sys
 import miriad
-import mirtask
+#import mirtask
 import mirexec
 import aplpy
 import pylab as pl
@@ -50,7 +50,7 @@ def cleanup():
 	
 
 def clean():
-	#S.niters=1000;
+	S.niters=10000;
 	calib.invert(S, 'invert.txt');
 	calib.clean(S, 'clean.txt');
 	calib.restorim(S, 'restor.txt');
@@ -61,8 +61,9 @@ def rimres():
 	calib.restores(S, 'restor.txt');
 
 def clean_deeper():
-	#S.niters=10000000;
-	calib.maths(S, 'maths.txt');
+	S.niters=10000000;
+	if os.path.exists(S.mask)!=True:
+		calib.maths(S, 'maths.txt');
 	calib.clean_deeper(S, 'clean.txt')#, df=2.);
 	S.image = S.image.replace('image','image4s')
 	S.res = S.res.replace('res','res4s')
@@ -213,6 +214,15 @@ def fp_models(ppoly,fpoly,model):
 	maths.out=model.replace("src","src_f");
 	tout = restor.snarf();
 	acos.taskout(maths,tout,'maths.txt');
+
+def flag():
+	uvflag = mirexec.TaskUVFlag();
+	uvflag.vis = S.vis;
+	uvflag.flagval = 'flag';
+	for f in S.flags.split(','):
+		uvflag.select = f;
+		tout = uvflag.snarf();
+		acos.taskout(uvflag, tout, 'uvflag.txt');
 
 def update():
 	S.update();

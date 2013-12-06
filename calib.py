@@ -166,12 +166,14 @@ def iofits(I, O):
 	os.system(cmd);
 	cmd = 'mv _tmp_vis '+O;
 	os.system(cmd);
-	uvflag = mirexec.TaskUVFlag();
-	uvflag.vis = O;
-	uvflag.select = 'auto,or,shadow(27),or,ant(6)';
-	uvflag.flagval = 'flag';
-	tout = uvflag.snarf();
-	acos.taskout(uvflag, tout, 'uvflag.txt')
+	flags = ['auto', 'shadow(25)', 'an(6)'];
+	for f in flags:
+		uvflag = mirexec.TaskUVFlag();
+		uvflag.vis = O;
+		uvflag.select = f; #'auto,or,shadow(27),or,ant(6)';
+		uvflag.flagval = 'flag';
+		tout = uvflag.snarf();
+		acos.taskout(uvflag, tout, 'uvflag.txt')
 	print "Done."
 
 def exfits(I, O):
@@ -216,9 +218,24 @@ def cal2srcs(cals, srcs):
 		uvcat = mirexec.TaskUVCat();
 		uvcat.vis = srcs[0]+','+srcs[1];
 		uvcat.out = srcs[2];
+		uvcat.options='unflagged';
 		tout = uvcat.snarf();
 		acos.taskout(uvcat, tout, 'cal2srcs.txt');
 	
+
+	# puthd on src
+	puthd = mirexec.TaskPutHead();
+	puthd.in_ = srcs[2]+'/restfreq';
+	puthd.value = 1.420405752;
+	tout = puthd.snarf();
+	acos.taskout(puthd, tout, 'cal2srcs.txt');
+	
+	puthd.in_ = srcs[2]+'/interval'
+	puthd.value = 1.0
+	puthd.type = 'double'
+	tout = puthd.snarf();
+	acos.taskout(puthd, tout, 'cal2srcs.txt');
+
 	# gpcopy cal1 -> src
 	gpcopy  = mirexec.TaskGPCopy();
 	gpcopy.vis = cals[0];
@@ -234,19 +251,6 @@ def cal2srcs(cals, srcs):
 	#gpcopy.options = 'nopass';
 	#tout = gpcopy.snarf();
 	#acos.taskout(gpcopy, tout, 'cal2srcs.txt');
-
-	# puthd on src
-	puthd = mirexec.TaskPutHead();
-	puthd.in_ = srcs[2]+'/restfreq';
-	puthd.value = 1.420405752;
-	tout = puthd.snarf();
-	acos.taskout(puthd, tout, 'cal2srcs.txt');
-	
-	puthd.in_ = srcs[2]+'/interval'
-	puthd.value = 1.0
-	puthd.type = 'double'
-	tout = puthd.snarf();
-	acos.taskout(puthd, tout, 'cal2srcs.txt');
 
 def specr(f, S):
 	'''
