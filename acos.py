@@ -85,13 +85,16 @@ class settings:
 				self.cell = int(FA['cell']);
 				self.selfcal_select = FA['selfcal_select'];
 				self.cutoff = round(float(FA['cutoff']), 10);
+				self.clean_region=FA['clean_region'];
 				self.niters = float(FA['niters']);
 				self.gt = round(float(FA['gt']),10);
 				self.invert_options = FA['invert_options'];
 				self.robust = FA['robust'];
 				self.selfcal_options = FA['selfcal_options']
+				self.selfcal_select = FA['selfcal_select']
 				self.selfcal_interval = FA['selfcal_interval'];
 				self.flags = FA['flags']
+				self.fipe = FA['fipe']
 				F.close();
 		except IOError:
 			# Object Handling
@@ -117,6 +120,7 @@ class settings:
 			self.imsize = 2000;
 			self.cell = 2; 
 			self.cutoff = 0.02; # Just a random default.
+			self.clean_region='';
 			self.niters = 10000; 
 			self.gt = round(gt,10);
 			self.invert_options = 'mfs,double'
@@ -125,6 +129,7 @@ class settings:
 			self.selfcal_select = selfcal_select;
 			self.selfcal_interval = selfcal_interval;
 			self.flags = flags;
+			self.fipe='1024,1024,512,512,24';
 	def update(self, selfcal_options=None):
 		self.i +=1;
 		if self.N>0:
@@ -166,13 +171,15 @@ class settings:
 		F.write('imsize='+str(self.imsize)+'\n');
 		F.write('cell='+str(self.cell)+'\n')
 		F.write('cutoff='+str(round(self.cutoff,10))+'\n')
+		F.write('clean_region='+self.clean_region+'\n')
 		F.write('niters='+str(int(self.niters))+'\n')
 		F.write('gt='+str(round(self.gt,10))+'\n')
 		F.write('invert_options='+self.invert_options+'\n')
-		F.write('robust='+self.robust+'\n')
+		F.write('robust='+str(self.robust)+'\n')
 		F.write('selfcal_options='+self.selfcal_options+'\n')
 		F.write('selfcal_select='+self.selfcal_select+'\n')
 		F.write('selfcal_interval='+str(self.selfcal_interval)+'\n');
 		F.write('flags='+self.flags+'\n');
+		F.write('fipe='+self.fipe+'\n')
 		F.close();
 		

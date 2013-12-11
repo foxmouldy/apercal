@@ -83,6 +83,7 @@ def invert(settings, fname):
 def clean(settings, fname):
 	clean = mirexec.TaskClean()
 	clean.map = settings.map;
+	#clean.region = settings.clean_region;
 	clean.beam = settings.beam;
 	clean.out = settings.model;
 	clean.cutoff = round(settings.cutoff, 10);
@@ -116,6 +117,7 @@ def maths(settings, fname):
 	maths.exp = settings.image;
 	maths.mask = settings.image+'.gt.'+str(settings.gt);
 	maths.out = settings.mask;
+	#maths.region=settings.clean_region;
 	tout = maths.snarf();
 	acos.taskout(maths, tout, fname);
 
