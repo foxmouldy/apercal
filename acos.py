@@ -88,6 +88,7 @@ class settings:
 				self.clean_region=FA['clean_region'];
 				self.niters = float(FA['niters']);
 				self.gt = round(float(FA['gt']),10);
+				self.invert_select = FA['invert_select'];
 				self.invert_options = FA['invert_options'];
 				self.robust = FA['robust'];
 				self.selfcal_options = FA['selfcal_options']
@@ -123,6 +124,7 @@ class settings:
 			self.clean_region='';
 			self.niters = 10000; 
 			self.gt = round(gt,10);
+			self.invert_select = '';
 			self.invert_options = 'mfs,double'
 			self.robust = 2.0;
 			self.selfcal_options = selfcal_options;
@@ -174,6 +176,7 @@ class settings:
 		F.write('clean_region='+self.clean_region+'\n')
 		F.write('niters='+str(int(self.niters))+'\n')
 		F.write('gt='+str(round(self.gt,10))+'\n')
+		F.write('invert_select='+self.invert_select+'\n')
 		F.write('invert_options='+self.invert_options+'\n')
 		F.write('robust='+str(self.robust)+'\n')
 		F.write('selfcal_options='+self.selfcal_options+'\n')
