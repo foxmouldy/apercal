@@ -84,7 +84,6 @@ def makesettings():
 
 def gets():
 	global S;
-	#immax = 5.668E-02/3.;
 	S = acos.settings(name=options.settings);
 	S.save();
 
@@ -278,11 +277,23 @@ def update():
 	S.save();
 	#print "Updated!"
 
+def uvlin():
+	cmd = 'uvlin vis='+S.vis+' chans='+chans0+' out='+S.chan0+' order=2 mode='+S.mode;
+	os.system(cmd);
+	gets(S.chan0)
+
+def selfcalcopy():
+	gpcopy = mirexec.TaskGPCopy();
+	gpcopy.vis = S.chan0;
+	gpcopy.out = S.vis;
+	tout = gpcopy.snarf();
+	acos.taskout(gpcopy, tout, 'gpcopy');
+
 if options.calls!=None:
 	gets();
 	print S.name
 	for c in options.calls.split(','):
 		#print c+'\n';
-		cmd = c+'('+options.args+')';
+		cmd = c+'('+str(options.args)+')';
 		print cmd;
 		exec(cmd);
