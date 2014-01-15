@@ -150,6 +150,7 @@ def selfcal(settings, fname):
 	selfcal.options = settings.selfcal_options;
 	selfcal.model = settings.m4s;
 	selfcal.interval = settings.selfcal_interval;
+	selfcal.select = settings.selfcal_settings;
 	tout = selfcal.snarf();
 	acos.taskout(selfcal, tout, fname);
 
