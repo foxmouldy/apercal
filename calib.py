@@ -77,6 +77,7 @@ def invert(settings, fname):
 	invert.cell = settings.cell;
 	invert.options=settings.invert_options;
 	invert.robust = settings.robust;
+	invert.select = settings.invert_select;
 	tout = invert.snarf()
 	acos.taskout(invert, tout, fname);
 
