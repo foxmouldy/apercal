@@ -45,9 +45,9 @@ def rm(tag=None):
 class settings:
 	def __init__(self, uvfiles='c1,c2,t1,t2', name=None, tag='.UVF',
 	retag='.uv', cal1='cal1', cal2='cal2',
-	src1='src1', line='channel,1000,1,1,1', src2='src2', i=1, N=0, selfcal_options='mfs,phase', 
-	selfcal_select='uvrange(0.5,10000)', gt=0.001, cutoff=None,
-	robust=2.0, selfcal_interval=5., overwrite=False, flags='auto,an(6),shadow(25)'):
+	src1='src1', line='channel,1000,1,1,1', src2='src2', i=0, N=0, selfcal_options='mfs,phase', 
+	selfcal_select='-uvrange(0,0.5)', gt=0.001, cutoff=None,
+	robust=-2.0, selfcal_interval=1., overwrite=False, flags='auto,an(6),shadow(25)'):
 
 		fname = name+'.dat';
 		if overwrite==True:
@@ -118,20 +118,20 @@ class settings:
 			self.image = name+'.image'+str(i);
 			self.res = name+'.res'+str(i);
 			self.m4s = name+'.m4s'+str(i);
-			self.imsize = 2000;
-			self.cell = 2; 
-			self.cutoff = 0.02; # Just a random default.
+			self.imsize = 1050;
+			self.cell = 4; 
+			self.cutoff = 0.001; # Just a random default.
 			self.clean_region='';
-			self.niters = 10000; 
+			self.niters = 100000; 
 			self.gt = round(gt,10);
 			self.invert_select = '';
 			self.invert_options = 'mfs,double'
-			self.robust = 2.0;
+			self.robust = -2.0;
 			self.selfcal_options = selfcal_options;
 			self.selfcal_select = selfcal_select;
 			self.selfcal_interval = selfcal_interval;
 			self.flags = flags;
-			self.fipe='1024,1024,512,512,24';
+			self.fipe='1024,1024,512,512,24,model';
 	def update(self, selfcal_options=None):
 		self.i +=1;
 		if self.N>0:

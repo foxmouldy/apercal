@@ -215,7 +215,7 @@ def fp_models(ppoly,fpoly,model):
 	tout = restor.snarf();
 	acos.taskout(maths,tout,'maths.txt');
 
-def fipe_models(model):
+def mkfmod():
 	'''
 	Uses image properties to cutout a single rectangular 
 	region from a mask. 
@@ -231,9 +231,10 @@ def fipe_models(model):
 	xp = int(S.fipe[2]);
 	yp = int(S.fipe[3]);
 	l = int(S.fipe[4]);
-	polygon = 'polygon(0,0,'+str(xp-l)+',0,'+str(xp-l)+','+str(yp+l);
-	polygon = polygon+','+str(xp+l)+','+str(yp+l)+','+str(xp+l)+',0,';
-	polygon = polygon+str(X)+',0,'+str(X)+','+str(Y)+',0,'+str(Y)+')';
+	model = S.fipe[5];
+	polygon = 'polygon(1,1,'+str(xp-l)+',1,'+str(xp-l)+','+str(yp+l);
+	polygon = polygon+','+str(xp+l)+','+str(yp+l)+','+str(xp+l)+',1,';
+	polygon = polygon+str(X)+',1,'+str(X)+','+str(Y)+',1,'+str(Y)+')';
 	maths = mirexec.TaskMaths();
 	maths.exp = model;
 	maths.region = polygon;
