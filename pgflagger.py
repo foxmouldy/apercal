@@ -1,7 +1,7 @@
 import sys
 import miriad
 import mirexec
-import mirexec2
+import mirexecb
 import aplpy
 import pylab as pl
 import numpy
@@ -46,7 +46,7 @@ def pgflag(params):
 		# This default naming convention is a little clumsy, but at
 		# least its clear what's happening here. 
 		params.log = params.vis+'.pgflaglog.txt';
-	pgflag = mirexec2.TaskPGFlag();
+	pgflag = mirexecb.TaskPGFlag();
 	pgflag.vis = params.vis;
 	pgflag.select = params.select;
 	pgflag.stokes = params.stokes; 
