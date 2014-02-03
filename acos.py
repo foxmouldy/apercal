@@ -122,7 +122,7 @@ class settings:
 			self.cell = 4; 
 			self.cutoff = 0.001; # Just a random default.
 			self.clean_region='';
-			self.niters = 100000; 
+			self.niters = 10000; 
 			self.gt = round(gt,10);
 			self.invert_select = '';
 			self.invert_options = 'mfs,double'

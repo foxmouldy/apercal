@@ -50,7 +50,7 @@ def cleanup():
 	
 
 def clean():
-	S.niters=10000;
+	#S.niters=10000;
 	calib.invert(S, 'invert.txt');
 	calib.clean(S, 'clean.txt');
 	calib.restorim(S, 'restor.txt');
@@ -61,12 +61,14 @@ def rimres():
 	calib.restores(S, 'restor.txt');
 
 def clean_deeper():
-	S.niters=10000000;
+	ni = S.niters;
+	S.niters=1000000;
 	if os.path.exists(S.mask)!=True:
 		calib.maths(S, 'maths.txt');
 	calib.clean_deeper(S, 'clean.txt')#, df=2.);
 	S.image = S.image.replace('image','image4s')
 	S.res = S.res.replace('res','res4s')
+	S.niters=ni;
 	rimres();
 
 def sc():

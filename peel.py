@@ -42,7 +42,7 @@ parser.add_option('-g', type='string', dest='g', default=None,
 (options, args) = parser.parse_args();
 
 if len(sys.argv)==1:
-	print "peel.uv - This helps peel off a set of sources from a region in the sky."
+	print "peel.py - This helps peel off a set of sources from a region in the sky."
 	parser.print_help();
 	dummy = sys.exit(0);
 
@@ -72,6 +72,9 @@ def mkpeel(a,b,c):
 	# Step 3: Finally, I'm going to make a settings file just for the peel.uv:
 	S = acos.settings(name=c);
 	S.save();
+	
+	# Step 4: Now to clean up the temp.uv files.
+	os.system("rm -r temp*.uv");
 
 def mkfield(a, b, c, g):
 	'''
@@ -129,7 +132,9 @@ def mkfield(a, b, c, g):
 	S = acos.settings(name=c);
 	S.save();
 	print "DONE"
-	# TODO: Cleanup temp.uv and temp3.uv temp4.uv
+
+	# Step 7: Cleanup temp.uv and temp3.uv temp4.uv
+	os.system("rm -r temp*.uv");
 
 if options.mode!=None:
 	print options.mode;
