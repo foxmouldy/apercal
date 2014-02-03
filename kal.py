@@ -306,6 +306,14 @@ def getuvspw():
 		cmd = 'rm -r '+f;
 		os.system(cmd);
 			
+def bsc():
+	# This is the batch selfcal. It will loop over each vis. 
+	vises = S.vis;
+	for v in vises.split(','):
+		S.vis=v;
+		calib.selfcal(S, 'selfcal.txt');
+	S.vis = vises
+
 
 if options.calls!=None:
 	gets();
