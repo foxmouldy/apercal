@@ -26,7 +26,7 @@ parser.add_option('--log', '-l', type='string', dest='log', default=None,
 parser.add_option('--stokes', type='string', dest='stokes', default='qq', 
 	help='Stokes to operate on. [qq]');
 parser.add_option('--flagpar', '--f', type='string', dest='flagpar', 
-	default='2,10,20,10,5,3', help='Flagpar for SumThresholding [2,10,20,10,5,3]');
+	default='3,5,10,5,5,3', help='Flagpar for SumThresholding [2,10,20,10,5,3]');
 parser.add_option('--options', '-o', type='string', dest='options', 
 	default='nodisp', help = 'PGFLAG options [nodisp].'); 
 
@@ -60,4 +60,6 @@ def pgflag(params):
 
 # Run or Import
 if __name__ == "__main__":
-	pgflag(options);
+	for v in options.vis.split(','):
+		options.vis=v;
+		pgflag(options);
