@@ -4,7 +4,7 @@
 # statistics to a png file. This will also write an output file which
 # contains the aforementioned statistics. 
 # TODO: Use hdf5 functionality to store the output. 
-
+# TODO: Fix bug which causes only the last process to be plotted and saved. 
 import pylab as pl
 import time
 import psutil
@@ -131,8 +131,11 @@ def watch_process(params):
 if __name__ == "__main__":
 		print "\nwatch_process.py - Try not to do any other writes on this disk."
 		options.cmds = open(options.name, 'r');
+		i = 0;
 		for cmd in options.cmds:
 			print "watching... "+cmd;
 			c = cmd.replace('\n', '').split(' ');
 			options.cmd = c;
+			options.outtag = options.outtag+'_'+str(i)
 			watch_process(options);
+			i = i+1;
