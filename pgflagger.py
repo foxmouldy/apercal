@@ -1,7 +1,7 @@
 import sys
 import miriad
 import mirexec
-import mirexecb
+from apercal import mirexecb
 import aplpy
 import pylab as pl
 import numpy
@@ -26,7 +26,7 @@ parser.add_option('--log', '-l', type='string', dest='log', default=None,
 parser.add_option('--stokes', type='string', dest='stokes', default='qq', 
 	help='Stokes to operate on. [qq]');
 parser.add_option('--flagpar', '--f', type='string', dest='flagpar', 
-	default='3,5,10,5,5,3', help='Flagpar for SumThresholding [3,5,10,5,5,3]');
+	default='5,2,2,3,5,3', help='Flagpar for SumThresholding [5,2,2,3,5,3]');
 parser.add_option('--options', '-o', type='string', dest='options', 
 	default='nodisp', help = 'PGFLAG options [nodisp].'); 
 
