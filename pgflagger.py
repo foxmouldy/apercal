@@ -26,7 +26,7 @@ parser.add_option('--log', '-l', type='string', dest='log', default=None,
 parser.add_option('--stokes', type='string', dest='stokes', default='qq', 
 	help='Stokes to operate on. [qq]');
 parser.add_option('--flagpar', '--f', type='string', dest='flagpar', 
-	default='5,2,2,3,5,3', help='Flagpar for SumThresholding [5,2,2,3,5,3]');
+	default='5,4,4,4,5,3', help='Flagpar for SumThresholding [5,4,4,4,5,3]');
 parser.add_option('--options', '-o', type='string', dest='options', 
 	default='nodisp', help = 'PGFLAG options [nodisp].'); 
 
