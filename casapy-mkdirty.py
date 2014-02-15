@@ -19,10 +19,12 @@ if len(sys.argv)==1:
 	parser.print_help();
 	dummy = sys.exit(0);
 
-def mkdirty(vis, field, niter=0, imsize='4.0arcsec', weighting='briggs',
+def mkdirty(vis, field, niter=0, imsize=1050, cell='4.0arcsec', weighting='briggs',
 robust=-2., spw='0', mode='mfs'):
 	imagename=vis.replace('.MS', '_f'+field+'_spw'+spw+'.dirty');
-	clean();
+	clean(vis=vis, field=field, imagename=imagename,
+		niter=niter, imsize=imsize, cell=cell, weighting=weighting, 
+		robust=robust, spw=spw, mode=mode);
 	return imagename;
 
 def cleanup(tag):
@@ -31,8 +33,8 @@ def cleanup(tag):
 	os.system('rm -r '+tag+'.residual');
 
 def getfields(vis):
-	summary = vishead(vis=vis, mode='summary');
-	return summary['fields'][0];
+	visheader = vishead(vis=vis, mode='list');
+	return visheader['field'][0];
 
 if __name__ == "__main__":
 	for v in options.vis.split(','):
