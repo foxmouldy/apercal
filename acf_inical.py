@@ -1,5 +1,7 @@
-import mirexecb
+from apercal import mirexecb
 from optparse import OptionParser 
+import sys
+import os
 
 global options
 global args
@@ -16,14 +18,9 @@ if len(sys.argv)==1:
 	parser.print_help();
 	dummy = sys.exit(0);
 
-def wsrtfits(uvf)
-	wsrtfits = mirexecb.TaskWSRTFits();
-	wsrtfits.in_ = uvf; 
-	wsrtfits.mode = 'uvin'; 
-	wsrtfits.out = uvf.replace('.UVF', '.uv');
-	wsrtfits.velocity = 'optbary';
-	o = wsrtfits.snarf();
-	print o; 
+def wsrtfits(uvf):
+	os.system('wsrtfits in='+uvf+' op=uvin velocity=optbary out='+uvf.replace('.UVF', '.UV'));
+	return uvf.replace('.UVF','.UV');
 
 def uvflag(uv):
 	uvflag = mirexecb.TaskUVFlag();
@@ -41,17 +38,14 @@ def attsys(uv):
 	tsysmed.out = '.temp';
 	o = tsysmed.snarf();
 	print o; 
-	attsys = mirexecb.TaskAttsys();
-	attsys.vis = '.temp';
-	attsys.out = '.temp2';
-	o = attsys.snarf();
-	print o;
+	os.system('attsys vis=.temp out=.temp2')
 	os.system('rm -r '+uv);
 	os.system('mv .temp2 '+uv);
 	os.system('rm -r .temp');
 
-if "__name__"=="__main__":
+if __name__=="__main__":
 	for v in options.vis.split(','):
-		wsrtfits(options.vis);
-		uvflag(options.vis);
-		attsys(options.vis);
+		print v
+		w = wsrtfits(v);
+		uvflag(w);
+		attsys(w);
