@@ -55,11 +55,12 @@ def imager(v, i):
 	os.system('rm -r model')
 
 def imcat(images, image):
-	os.system('imcat in='+ims+'out='+image);
+	os.system('imcat in='+images+' out='+image+' options=relax');
+	os.system('rm -r ACF*W*.IM');
 
 if __name__=="__main__":
 	for v in options.vis.split(','):
 		for i in range(0,8):
 			imager(v, i+1);
-		imcat(vis.replace('.UV','*'), vis.replace('.UV','.IM'));
+		imcat(options.vis.replace('.UV','W*.IM'), options.vis.replace('.UV','.IM'));
 
