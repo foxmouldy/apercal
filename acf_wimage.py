@@ -24,6 +24,7 @@ def imager(v, i):
 	invert.vis = v; 
 	invert.stokes='ii';
 	invert.options='double,mfs';
+	invert.line='channel,60,1,1,1'
 	invert.robust=-2;
 	invert.imsize=1050
 	invert.cell=4.;
@@ -62,5 +63,5 @@ if __name__=="__main__":
 	for v in options.vis.split(','):
 		for i in range(0,8):
 			imager(v, i+1);
-		imcat(options.vis.replace('.UV','W*.IM'), options.vis.replace('.UV','.IM'));
+		imcat(v.replace('.UV','W*.IM'), v.replace('.UV','.IM'));
 
