@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 source batchvals.sh
 python acf_inical.py -v $uvfs
 python pgflagger.py -v $uvs --flagpar $flagpar 
