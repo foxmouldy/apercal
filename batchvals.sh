@@ -1,13 +1,22 @@
 # Setup the flagging parameters
 export flagpar='5,1,1,1,5,3'
+export flags='an(6),an(3),an(5),an(10),shadow(25),auto'
+# Measurement sets
+export file=''
+export msfiles=''
+for file in `ls -d *.MS`
+	do 
+		export msfiles=$msfiles,$file 
+	done
+export msfiles=`echo $msfiles | sed s/^,//g`
 
 # Calibrators
-export cals='11400815_S0_T0.UV,11400816_S0_T0.UV,11400818_S0_T0.UV,11400819_S0_T0.UV'
-export cal1='111400815_S0_T0.UV' 
+export cals='11400971_S0_T0.UV,11400972_S0_T0.UV,11400974_S0_T0.UV,11400975_S0_T0.UV'
+export cal1='11400971_S0_T0.UV' 
 
 # Sources
-export srctag='11400817_S0_*.UVF'
-export sourcefilenames='ACF2G4P1.UV,ACF2G4P2.UV,ACF2G4P3.UV,ACF2G4P4.UV'
+export srctag='11400973_S0_*.UVF'
+export sourcefilenames='ACF2G6P1.UV,ACF2G6P2.UV,ACF2G6P3.UV,ACF2G6P4.UV'
 export sourcenames=`echo $sourcefilenames | sed s/.UV//g`
 
 # First put uvfs=*.UVF, 
