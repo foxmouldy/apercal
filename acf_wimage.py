@@ -11,6 +11,8 @@ parser = OptionParser(usage=usage);
 
 parser.add_option("--vis", '-v', type='string', dest = 'vis', default=None,
 	help = 'Comma separated list of visibilities to be imaged [None]')
+parser.add_option("--linmos", "-l", type='string', dest='linmos', default=None, 
+	help = "Linmos parameters (Input Images *.IM),(Output Mosaic) [None]")
 
 (options, args) = parser.parse_args();
 
@@ -59,9 +61,16 @@ def imcat(images, image):
 	os.system('imcat in='+images+' out='+image+' options=relax');
 	os.system('rm -r ACF*W*.IM');
 
+def linmos(images, mosim):
+	linmos = mirexec.TaskLinMos; 
+	linmos.in_ = images; 
+	linmos.out = mosim;
+	linmos.snarf();
+
 if __name__=="__main__":
 	for v in options.vis.split(','):
 		for i in range(0,8):
 			imager(v, i+1);
 		imcat(v.replace('.UV','W*.IM'), v.replace('.UV','.IM'));
-
+		if options.linmos!=None:
+			linmos(options.linmos.split(',')[0], options.linmos.split(',')[1]);

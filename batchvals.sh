@@ -18,6 +18,7 @@ export cal1='11400971_S0_T0.UV'
 export srctag='11400973_S0_*.UVF'
 export sourcefilenames='ACF2G6P1.UV,ACF2G6P2.UV,ACF2G6P3.UV,ACF2G6P4.UV'
 export sourcenames=`echo $sourcefilenames | sed s/.UV//g`
+export lm='ACFG6*.IM,ACFG6.IM'
 
 # First put uvfs=*.UVF, 
 export file=''
