@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-source batchvals.sh
-
+. ./batchvals.sh
 # Convert the MSs to UVFs
 for msname in `ls -d *.MS`
 	do
-		export uvname=`echo $msname | sed s/.MS/UVF/g`
+		export uvname=`echo $msname | sed s/.MS/.UVF/g`
 		ms2uvfits ms=$msname fitsfile=$uvname writesyscal=T multisource=T combinespw=T
 	done
-source batchvals.sh
+. ./batchvals.sh
 echo "MSs -> UVF completed"
 time python acf_inical.py -v $uvfs -f $flags 
 echo "Completed Inical"
-time python pgflagger.py -v $uvs --flagpar $flagpar 
+time python acf_pgflagger.py -v $uvs --flagpar $flagpar 
 echo "Completed PGFLAG"
 time python acf_calcals.py -c $cals
 echo "Completed Calcal"
