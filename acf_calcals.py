@@ -11,7 +11,7 @@ parser = OptionParser(usage=usage);
 
 parser.add_option("--cals", '-c', type='string', dest = 'cals', default=None,
 	help = 'Comma separated list of calibrator visiblities to do mfcal and to copy over solutions and to apply Tsys [None]')
-parser.add_option('--refant', '-c', type='int' dest='refant', default=1, 
+parser.add_option('--refant', '-r', type='int', dest='refant', default=1, 
 	help = 'Reference antenna')
 (options, args) = parser.parse_args();
 
