@@ -12,7 +12,7 @@ time python acf_inical.py -v $uvfs -f $flags
 echo "Completed Inical"
 time python acf_pgflagger.py -v $uvs --flagpar $flagpar 
 echo "Completed PGFLAG"
-time python acf_calcals.py -c $cals
+time python acf_calcals.py -c $cals --refant 2
 echo "Completed Calcal"
 time python acf_cal2srcs.py -c $cal1 -s $srcs
 echo "Completed Cal Copy"
