@@ -93,7 +93,7 @@ def bsmooth(options):
 	tb.open(btable)
 	tb.copy(options.btout, deep=True, valuecopy=True);
 	tb.close();
-	tb.open(options.btin, nomodify=False);
+	tb.open(options.btout, nomodify=False);
 	C = tb.getcol('CPARAM')
 	Cx = C*1;
 	N = pl.shape(C);
