@@ -1006,6 +1006,16 @@ class TaskPGFlag (TaskBase):
 	_keywords = ['vis', 'line', 'select', 'stokes', 'flagpar', 'command'];
 	_options = ['selgen', 'nosrc', 'noapply', 'nodisp', 'logstats', 'nocal', 'nopass', 'nopol']
 
+class TaskWSRTFits (TaskBase):
+    _keywords = ['in_', 'op', 'out', 'line', 'select', 'stokes', 'options', 'velocity']
+    _options = ['compress','nochi','nolefty','nocal','nopol','nopass','dss','nod2']
+
+class TaskTsysmed (TaskBase):
+	_keywords = ['vis', 'out'];
+
+class TaskAttsys (TaskBase):
+	_keywords = ['vis', 'out', 'tsysif', 'factor', 'options'];
+	_options = ['apply', 'unapply', 'auto', 'redo', 'inverse', 'scale', 'nocal', 'nopass', 'nopol']
 '''
 
 class TaskUVFlag (TaskBase):
