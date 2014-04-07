@@ -1,0 +1,11 @@
+#ra	dec	flux	gmaj	gmin	gpa
+10h02m00 -30d03m81 1.0 2arcmin 2arcmin 2.0deg
+10h20m00 -29d39m81 2.0 2arcmin 2arcmin 10.0deg
+10h04m00 -29d50m81 3.0 2arcmin 0.2arcmin 15.0deg
+10h05m00 -30d40m81 4.0 6arcmin 4arcmin 30.0deg
+9h55m00 -29d45m81 0.5 10arcmin 5arcmin 23.0deg
+9h52m00 -29d50m81 10.0 1arcsec 1arcsec 25.0deg
+9h58m00 -29d30m81 2.0 2arcmin 2arcmin 34.0deg
+9h52m00 -30d22m81 3.0 4arcmin 3arcmin 55.0deg
+9h51m00 -30d20m81 2.0 2arcmin 2arcmin 60.0deg
+10h00m00 -30d00m00 1.0 4arcmin 3arcmin 12.0deg
