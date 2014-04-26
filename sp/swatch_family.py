@@ -20,6 +20,9 @@ parser.add_option("--saveas", type='string', dest='saveas', default='txt',
 	help = "How should the report be saved? [txt] file or fig?");
 parser.add_option("--totaltime", type=float, dest='totaltime', default=5.0, 
 	help = "Total Time to Sample the Process [5.0]s");
+parser.add_option("--tag", type='string', dest='tag', default=None, 
+	help = "Output tag [None]");
+
 (options, args) = parser.parse_args();
 
 if len(sys.argv)==1: 
@@ -138,7 +141,7 @@ def start_proc(cmd):
 	return p, fout;
 
 if __name__=='__main__':
-	
+	fout = None;	
 	if options.ptype.upper()=='PID':
 		proc = get_proc_by_pid(int(options.proc));
 	elif options.ptype.upper()=='NAME':
@@ -182,8 +185,11 @@ if __name__=='__main__':
 				fid = f.proc.pid;
 
 			x, cpu, ram, z, i0, i1, i2, i3 = f.get_result()
-			pl.savetxt(pname+'.'+fname+'.'+str(fid)+str(N)+'.txt', 
-				zip(x, z, cpu, ram, i0, i1, i2, i3), fmt='%10.10f');
+			if options.tag!=None:
+				outname = options.tag+'.'+pname+'.'+fname+'.'+str(fid)+str(N)+'.dat';
+			else:
+				outname = pname+'.'+fname+'.'+str(fid)+str(N)+'.dat';
+			pl.savetxt(outname, zip(x, z, cpu, ram, i0, i1, i2, i3), fmt='%10.10f');
 	else:
 		for f in F:
 			x, cpu, ram, z = f.get_result()
@@ -195,6 +201,6 @@ if __name__=='__main__':
 		pl.ylabel('% Usage')
 		pl.savefig(proc+'.eps');
 		
-	if fout:
+	if fout!=None:
 		fout.close()
 		os.system('mv temp.txt '+pname+'.stdout.txt')
