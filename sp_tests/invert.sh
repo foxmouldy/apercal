@@ -1,1 +1,1 @@
-invert vis=ACF2G2P2W0.UV map=map beam=beam imsize=1050 cell=4 options=double stokes=ii robust=+2
+invert vis=ACF2G2P1W0.UV map=map beam=beam imsize=1050 cell=4 options=double stokes=ii robust=+2

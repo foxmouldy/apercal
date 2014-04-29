@@ -2,7 +2,7 @@ sleep 5
 echo MIRIAD Tests>> report.txt
 echo >> report.txt
 echo invert >> report.txt
-( time python swatch_family.py --ptype start --cfile invert.sh --totaltime 10000 --tag restor 
+( time python swatch_family.py --ptype start --cfile invert.sh --totaltime 10000 --tag restor ) 2>> report.txt 
 sleep 5
 echo clean_n10 >> report.txt
 ( time python swatch_family.py --ptype start --cfile clean_n10.sh --totaltime 10000 --tag miriad_clean.n10 ) 2>> report.txt
