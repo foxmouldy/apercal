@@ -23,6 +23,7 @@ def mosaicr(tag):
 	mosdir = tag+'.IMOS';
 	os.system('mkdir '+mosdir)
 	linmos = mirexecb.TaskLinMos();#
+	linmos.options = 'taper';
 	for w in range(1,9):
 		infiles = '';
 		for p in range(1,5):
