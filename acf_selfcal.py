@@ -16,9 +16,7 @@ parser.add_option('--tag', '-t', type='string', dest='tag', default='',
 	help = 'Naming tag to be carried [None]')
 (options, args) = parser.parse_args();
 
-if len(sys.argv)==1: 
-	parser.print_help();
-	dummy = sys.exit(0);
+
 
 def getimmax(imname):
 	imstat = mirexec.TaskImStat()
@@ -107,7 +105,20 @@ def selfcalr(options, mapname, beamname, imname, modelname, maskname, f=4., so='
 	restor(mapname, beamname, modelname, imname);
 
 
+def imager(vis, select, mapname, beamname, imname, modelname, maskname, f=4., so='mfs,phase', interval='1'):
+	invertr(vis, select, mapname, beamname);
+	clean(mapname, beamname, modelname)
+	restor(mapname, beamname, modelname, imname);
+	immax, imunits = getimmax(imname);
+	maths(imname, immax/f, maskname);
+	clean(mapname, beamname, modelname, maskname, immax/(f*2))
+	restor(mapname, beamname, modelname, imname);
+
+
 if __name__=="__main__":
+	if len(sys.argv)==1: 
+		parser.print_help();
+		dummy = sys.exit(0);
 	mapname = options.vis+options.tag+'.map'
 	beamname = options.vis+options.tag+'.beam'
 	imname=options.vis+options.tag+'.image';
