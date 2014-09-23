@@ -7,12 +7,13 @@ import sys
 import numpy 
 import analysisUtils as au
 from optparse import OptionParser
+import itertools
 
 usage = "usage: %prog options"
 parser = OptionParser(usage=usage);
 
 # O1 for Option 
-parser.add_option("--ants", "-a", type = 'string', dest = 'ants', default='8,9,10', 
+parser.add_option("--opants", "-a", type = 'string', dest = 'opants', default='8,9,10', 
 	help = "Antennas to be used for calculation [8,9,10]")
 
 parser.add_option("--vis", "-v", type = 'string', dest = 'vis', default=None, 
@@ -53,28 +54,85 @@ def AT(s_ij=0, s_ik=0, s_jk=0, S=0):
 	s_ij = pl.average(s_ij)
 	s_ik = pl.average(s_ik)
 	s_jk = pl.average(s_jk)
-	return (2*kb/S)*(s_ij*s_ik)/(s_jk-s_ij*s_ik)	
+	return (2*kb/S)*(s_ij*s_ik)/(s_jk-s_ij*s_ik)
+
+def ant_looper(options):
+	'''
+	ant_looper: loops calc_sefd over all possible combinations of three
+	dishes.
+	'''
+	# Generate all choices of three ants
+	opants = []
+	for a in options.opants.split(','):
+		opants.append(int)
+	opants = pl.array(opants)
+	iterants = itertools.permutations(opants, 3)
+	#threes = ['8,9,10', '8,11,12']
+	
+
+	# Now generate a multi-dimensional array:
+	# [Nants, Npol, Nchan=Nspw*Nchanperspw*Nvis]
+	Nants = len(opants)
+	Npol = 2 # Just xx and yy
+	# Nchan
+	vises = options.vis.split(',')
+	tb.open(vises[0])
+	Nspw = tb.nrows()
+	Nchanperspw = len(tb.getcol('CHAN_FREQ'))
+	Nvis = len(vises)
+	Nchantotal = Nspw*Nchanperspw*Nvis
+	tb.close()
+	
+	S = pl.zeros((Nants, Npol, Nchantotal))
+	Ncpv = Nchan*Nspw # Ncpv = Nchanpervis
+
+	ants = iterants.next()
+	v = 0
+	for vis in vises:
+		while (ants is interants.next())==False:
+			sefd_i_xx, sefd_i_yy, sefd_j_xx, sefd_j_yy, sefd_k_xx, sefd_k_yy = calc_sefd(vis=vis, ants=ants)
+			i = ants[0]
+			j = ants[1]
+			k = ants[2]
+
+			S[i,0,v*Ncpv:Ncpv*(v+1)-1] = sefd_i_xx
+			S[i,1,v*Ncpv:Ncpv*(v+1)-1] = sefd_i_yy
+			S[j,0,v*Ncpv:Ncpv*(v+1)-1] = sefd_j_xx
+			S[j,1,v*Ncpv:Ncpv*(v+1)-1] = sefd_j_yy
+			S[k,0,v*Ncpv:Ncpv*(v+1)-1] = sefd_k_xx
+			S[k,1,v*Ncpv:Ncpv*(v+1)-1] = sefd_k_yy
+	return S	
 
 
-if __name__=="__main__":	
-	pl.figure(figsize=(10,15))
-	chans = pl.arange(0,64) 
-	spws = pl.arange(0,8)
+def calc_sefd(vis=None, ants=[8,9,10]):
+	'''
+	calc_sefd(vis=None, ants='8,9,10')
+	This module calculates the SEFD from the correlation coefficient for a 
+	set of three dishes.
+	Returns sefd_i_xx, sefd_i_yy, sefd_j_xx, sefd_j_yy, sefd_k_xx, sefd_k_yy
+	'''
+	#pl.figure(figsize=(10,15))
+	#chans = pl.arange(0,64) 
+	#spws = pl.arange(0,8)
 	#vis = '11404314_S0_T0.MS'
-	vis = options.vis;
+	#vis = options.vis;
 	tb.open(vis+'/SOURCE')
 	source = tb.getcol('NAME')
 	tb.close()
 	
 	tb.open(vis+'/SPECTRAL_WINDOW')
 	chan_freq = tb.getcol('CHAN_FREQ')
+	spws = tb.nrows()
+	chans = len(chan_freq)
 	tb.close()
 	
-	ants = options.ants
-	i = int(ants.split(',')[0]);
-	j = int(ants.split(',')[1]);
-	k = int(ants.split(',')[2]);
-	
+	#ants = options.ants
+	#i = int(ants.split(',')[0]);
+	#j = int(ants.split(',')[1]);
+	#k = int(ants.split(',')[2]);
+	i = ants[0]
+	j = ants[1]
+	k = ants[2]
 	
 	tb.open(vis)
 	for spw in spws:
@@ -84,6 +142,7 @@ if __name__=="__main__":
 		AT_j_yy = []
 		AT_k_xx = []
 		AT_k_yy = []
+		FREQS = []
 		print spw
 		for chan in chans:
 			#i = 8
@@ -142,7 +201,7 @@ if __name__=="__main__":
 			c_jk_xx = pl.absolute(data_jk_xx)/pl.sqrt(pl.absolute(data_jj_xx)*pl.absolute(data_kk_xx))
 			c_jk_yy = pl.absolute(data_jk_yy)/pl.sqrt(pl.absolute(data_jj_yy)*pl.absolute(data_kk_yy))
 			
-			
+
 			S = flux_density(source='3c147', f=chan_freq[chan,spw]/1e9)
 			AT_i_xx.append(AT(s_ij=c_ij_xx, s_ik=c_ik_xx, s_jk=c_jk_xx, S=S))
 			AT_i_yy.append(AT(s_ij=c_ij_yy, s_ik=c_ik_yy, s_jk=c_jk_yy, S=S))	
@@ -167,29 +226,34 @@ if __name__=="__main__":
 		AT_k_yy = pl.array(AT_k_yy)
 		sefd_k_xx = 2*kb/(AT_k_xx)
 		sefd_k_yy = 2*kb/(AT_k_xx)
-	
-		pl.subplot(311)
-		pl.plot(chan_freq[:,spw], sefd_i_xx, linestyle='-', color='blue', lw=1, alpha=0.6, label="SPW"+str(spw));
-		pl.plot(chan_freq[:,spw], sefd_i_yy, linestyle='--', color='red', lw=1, alpha=0.6, label="SPW"+str(spw));
-	
-		pl.subplot(312)
-		pl.plot(chan_freq[:,spw], sefd_j_xx, linestyle='-', color='blue', lw=1, alpha=0.6, label="SPW"+str(spw));
-		pl.plot(chan_freq[:,spw], sefd_j_yy, linestyle='--', color='red', lw=1, alpha=0.6, label="SPW"+str(spw));
 		
-		pl.subplot(313)
-		pl.plot(chan_freq[:,spw], sefd_k_xx, linestyle='-', color='blue', lw=1, alpha=0.6, label="SPW"+str(spw));
-		pl.plot(chan_freq[:,spw], sefd_k_yy, linestyle='--', color='red', lw=1, alpha=0.6, label="SPW"+str(spw));
+		#pl.subplot(311)
+		#pl.plot(chan_freq[:,spw], sefd_i_xx, linestyle='-', color='blue', lw=1, alpha=0.6, label="SPW"+str(spw));
+		#pl.plot(chan_freq[:,spw], sefd_i_yy, linestyle='--', color='red', lw=1, alpha=0.6, label="SPW"+str(spw));
+	
+		#pl.subplot(312)
+		#pl.plot(chan_freq[:,spw], sefd_j_xx, linestyle='-', color='blue', lw=1, alpha=0.6, label="SPW"+str(spw));
+		#pl.plot(chan_freq[:,spw], sefd_j_yy, linestyle='--', color='red', lw=1, alpha=0.6, label="SPW"+str(spw));
+		
+		#pl.subplot(313)
+		#pl.plot(chan_freq[:,spw], sefd_k_xx, linestyle='-', color='blue', lw=1, alpha=0.6, label="SPW"+str(spw));
+		#pl.plot(chan_freq[:,spw], sefd_k_yy, linestyle='--', color='red', lw=1, alpha=0.6, label="SPW"+str(spw));
 	tb.close()
-	pl.subplot(311)
-	pl.title("ANTENNA "+str(i))
-	pl.ylim(0,1000)
-	pl.subplot(312)
-	pl.title("ANTENNA "+str(j))
-	pl.ylim(0,1000)
-	pl.subplot(313)
-	pl.title("ANTENNA "+str(k))
-	pl.ylim(0,1000)
-	pl.xlabel('Frequency (Hz)', fontsize=20)
-	pl.ylabel("SEFD", fontsize=20)
-	pl.savefig("SEFD"+str(i)+str(j)+str(k)+".pdf", dpi=300)
-	pl.close()
+	return sefd_i_xx, sefd_i_yy, sefd_j_xx, sefd_j_yy, sefd_k_xx, sefd_k_yy
+	#pl.subplot(311)
+	#pl.title("ANTENNA "+str(i))
+	#pl.ylim(0,1000)
+	#pl.subplot(312)
+	#pl.title("ANTENNA "+str(j))
+	#pl.ylim(0,1000)
+	#pl.subplot(313)
+	#pl.title("ANTENNA "+str(k))
+	#pl.ylim(0,1000)
+	#pl.xlabel('Frequency (Hz)', fontsize=20)
+	#pl.ylabel("SEFD", fontsize=20)
+	#pl.savefig("SEFD"+str(i)+str(j)+str(k)+".pdf", dpi=300)
+	#pl.close()
+
+
+if __name__=="__main__":	
+	S = ant_looper(options)
