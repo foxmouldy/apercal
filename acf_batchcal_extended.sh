@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-. ./acf_batchvals.sh
+#. ./acf_batchvals.sh
 # Convert the MSs to UVFs
-for msname in `ls -d *.MS`
-	do
-		export uvname=`echo $msname | sed s/.MS/.UVF/g`
-		ms2uvfits ms=$msname fitsfile=$uvname writesyscal=T multisource=T combinespw=T
-	done
+#for msname in `ls -d *.MS`
+#	do
+#		export uvname=`echo $msname | sed s/.MS/.UVF/g`
+#		ms2uvfits ms=$msname fitsfile=$uvname writesyscal=T multisource=T combinespw=T
+#	done
 . ./acf_batchvals.sh
-echo "MSs -> UVF completed"
+#echo "MSs -> UVF completed"
 time python acf_inical.py -v $uvfs -f $flags 
 echo "Completed Inical"
 # The following value should probably be moved to acf_batchvals.sh
@@ -19,7 +19,7 @@ for vis_fits in `ls ${srctag}`
 		for i in `seq 1 ${windows}`
 			do
 				echo $i
-				python spflag.py -v $vis -s "window($i)" -l 2,4
+				python acf_spflag.py -v $vis -s "window($i)" -l 2,4
 			done
 	done
 echo "Completed edge channels clipping"
@@ -42,28 +42,24 @@ number_pointings=4
 new_flagpars='4,3,3,10,6,3'
 polynom_order=4
 uvlin_mode=chan0
-#for pointing in `ls ${pointings}`
 for i in `seq 1 ${number_pointings}`
 	do
-		pointing=ACF2G1P${i}
+		pointing=ACF2G2P${i}
 		vis=${pointing}.UV
 		directory_name=`echo ${pointing} | tr '[:upper:]' '[:lower:]'`
 		mkdir ${directory_name}
 		working_directory=`pwd`
 		#this is necessary to get a correct symbolic link
 		ln -s ${working_directory}/${vis} ${directory_name}
-		#python acf_pgflagger.py -v ${vis} -l pgflag.log --flagpar ${new_flagpars}
 		cd ${directory_name}
 		for window in `seq 1 ${windows}`
 			do
 			cp ../acf_selfcal.py .
-			#do
-				#uvlin vis=${directory_name}/${vis} select="window(${window})" out="${directory_name}/w${window}_${uvlin_mode}.uv" order=${polynom_order} mode=${uvlin_mode}
 				uvlin vis=${vis} select="window(${window})" out="w${window}_${uvlin_mode}.uv" order=${polynom_order} mode=${uvlin_mode}
-				#$python acf_selfcal.py -v ${directory_name}/w${window}_${uvlin_mode}.uv
 				python acf_selfcal.py -v w${window}_${uvlin_mode}.uv
 			done
-			invert vis=w*_chan0.uv map=w.map beam=w.beam imsize=1250 cell=4 robust=0.4 stokes=ii options=double,mfs slop=0.5
+			rm -r w.*
+			invert vis=w*_chan0.uv map=w.map beam=w.beam imsize=1250 cell=4 robust=-2 stokes=ii options=double,mfs slop=0.5
 			clean map=w.map beam=w.beam out=w.model niters=1000
 			restor model=w.model beam=w.beam map=w.map out=w.image
 			maths exp=w.image mask=w.image.gt.1e-3 out=w.mask
@@ -71,9 +67,5 @@ for i in `seq 1 ${number_pointings}`
 			rm -r w.image
 			clean map=w.map beam=w.beam out=w.model niters=1000000 cutoff=3e-4 region="mask(w.mask)"
 			restor model=w.model beam=w.beam map=w.map out=w.image
-			ims=../${directory_name}/w.image:$ims
 		cd ..
 	done
-mkdir all
-cd all
-linmos in=$ims out=w.image options=taper
