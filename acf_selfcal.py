@@ -107,7 +107,6 @@ def selfcal(vis, select, modelname, interval=1.0, so = 'mfs,phase'):
 
 def selfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,phase', interval='1'):
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
-<<<<<<< HEAD
 	immax, imunits = getimmax(imname);
 	if str(immax)=='nan':
 		mcut = options.defmcut;
@@ -121,28 +120,15 @@ def selfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,ph
 	else:
 		mcut = immax/20;
 	maths(imname, mcut, maskname);
-=======
 	immax, imunits = getimmax(imname);
 	maths(imname, immax/10., maskname);
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
 	immax, imunits = getimmax(imname);
 	maths(imname, immax/20., maskname);
->>>>>>> origin
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
 	selfcal(options.vis, options.select, modelname, so=so, interval=interval);
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
 
-<<<<<<< HEAD
-
-
-
-
-=======
-
-
-
-
->>>>>>> origin
 def imager(vis, select, mapname, beamname, imname, modelname, maskname='', cutoff=0.0):
 	invertr(vis, select, mapname, beamname);
 	clean(mapname, beamname, modelname)
