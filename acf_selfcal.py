@@ -109,21 +109,12 @@ def selfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,ph
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
 	immax, imunits = getimmax(imname);
 	if str(immax)=='nan':
-		mcut = options.defmcut;
-	else:
-		mcut = immax/10;
-	maths(imname, mcut, maskname);
+		immax = float(options.defmcut);
+	maths(imname, immax/10, maskname);
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
 	immax, imunits = getimmax(imname);
 	if str(immax)=='nan':
-		mcut = options.defmcut;
-	else:
-		mcut = immax/20;
-	maths(imname, mcut, maskname);
-	immax, imunits = getimmax(imname);
-	maths(imname, immax/10., maskname);
-	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
-	immax, imunits = getimmax(imname);
+		immax = options.defmcut;
 	maths(imname, immax/20., maskname);
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
 	selfcal(options.vis, options.select, modelname, so=so, interval=interval);
