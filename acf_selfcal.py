@@ -14,9 +14,9 @@ parser.add_option("--select", type = 'string', dest='select', default='',
 	help = 'UV selection [None]');
 parser.add_option('--tag', '-t', type='string', dest='tag', default='', 
 	help = 'Naming tag to be carried [None]')
+parser.add_option('--defmcut', '-d', type='string', dest='defmcut', default='1e-2',
+	help = 'Default Cutoff for Masking, used if nan is returned as max [1e-2]')
 (options, args) = parser.parse_args();
-
-
 
 def getimmax(imname):
 	imstat = mirexec.TaskImStat()
@@ -40,6 +40,7 @@ def invertr(vis, select, mapname, beamname):
 	invert.stokes = 'ii'
 	invert.imsize = 1250
 	invert.cell = 4
+	invert.robust= -2
 	tout = invert.snarf();
 
 def clean(mapname, beamname, modelname, maskname=None, cutoff=0.0):
@@ -91,27 +92,49 @@ def selfcal(vis, select, modelname, interval=1.0, so = 'mfs,phase'):
 	selfcal.interval = interval;
 	tout = selfcal.snarf()
 
-def selfcalr(options, mapname, beamname, imname, modelname, maskname, f=4., so='mfs,phase', interval='1'):
-	
-	invertr(options.vis, options.select, mapname, beamname);
-	clean(mapname, beamname, modelname)
-	restor(mapname, beamname, modelname, imname);
+#def selfcalr(options, mapname, beamname, imname, modelname, maskname, f=4., so='mfs,phase', interval='1'):
+#	
+#	invertr(options.vis, options.select, mapname, beamname);
+#	clean(mapname, beamname, modelname)
+#	restor(mapname, beamname, modelname, imname);
+#	immax, imunits = getimmax(imname);
+#	maths(imname, immax/f, maskname);
+#	clean(mapname, beamname, modelname, maskname, immax/(f*2))
+#	selfcal(options.vis, options.select, modelname, so=so, interval=interval);
+#	invertr(options.vis, options.select, mapname, beamname);
+#	clean(mapname, beamname, modelname)
+#	restor(mapname, beamname, modelname, imname);
+
+def selfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,phase', interval='1'):
+	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
 	immax, imunits = getimmax(imname);
-	maths(imname, immax/f, maskname);
-	clean(mapname, beamname, modelname, maskname, immax/(f*2))
+	if str(immax)=='nan':
+		mcut = options.defmcut;
+	else:
+		mcut = immax/10;
+	maths(imname, mcut, maskname);
+	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
+	immax, imunits = getimmax(imname);
+	if str(immax)=='nan':
+		mcut = options.defmcut;
+	else:
+		mcut = immax/20;
+	maths(imname, mcut, maskname);
+	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
 	selfcal(options.vis, options.select, modelname, so=so, interval=interval);
-	invertr(options.vis, options.select, mapname, beamname);
-	clean(mapname, beamname, modelname)
-	restor(mapname, beamname, modelname, imname);
+	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
 
 
-def imager(vis, select, mapname, beamname, imname, modelname, maskname, f=4., so='mfs,phase', interval='1'):
+
+
+
+def imager(vis, select, mapname, beamname, imname, modelname, maskname='', cutoff=0.0):
 	invertr(vis, select, mapname, beamname);
 	clean(mapname, beamname, modelname)
 	restor(mapname, beamname, modelname, imname);
 	immax, imunits = getimmax(imname);
-	maths(imname, immax/f, maskname);
-	clean(mapname, beamname, modelname, maskname, immax/(f*2))
+	maths(imname, immax/10, maskname);
+	clean(mapname, beamname, modelname, maskname, cutoff)
 	restor(mapname, beamname, modelname, imname);
 
 
@@ -125,22 +148,4 @@ if __name__=="__main__":
 	modelname = options.vis+options.tag+'.model'
 	maskname = options.vis+options.tag+'.mask'
 	
-	selfcalr(options, mapname, beamname, imname, modelname, maskname, f=2);
-	selfcalr(options, mapname, beamname, imname, modelname, maskname, f=3);
-	selfcalr(options, mapname, beamname, imname, modelname, maskname, f=4);
-	#selfcalr(options, mapname, beamname, imname, modelname, maskname, f=4, so='mfs,amp', interval='1000000');
-
-	#invertr(options.vis, options.select, mapname, beamname);
-	#clean(mapname, beamname, modelname)
-	#restor(mapname, beamname, modelname, imname);
-	#immax, imunits = getimmax(imname);
-	#maths(imname, immax/4., maskname);
-	#clean(mapname, beamname, modelname, maskname, immax/8.)
-	#selfcal(options.vis, options.select, modelname);
-	#invertr(options.vis, options.select, mapname, beamname);
-	#clean(mapname, beamname, modelname)
-	#restor(mapname, beamname, modelname, imname);
-
-
-
-
+	selfcalr(options, mapname, beamname, imname, modelname, maskname);
