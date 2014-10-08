@@ -1,6 +1,6 @@
 #!/bin/bash
 # Bradley Frank, ASTRON, NL 2014
-export vis='ACF2G1P2.UV'
+export vis='ACF2G1P1.UV'
 
 #Splitting up the UV file into SPWs
 cp apercal/acf_selfcal.py .
@@ -21,5 +21,7 @@ for file in `ls -d *.uv`
 for i in `seq 1 8`
 	do 
 		echo $i
-		python acf_selfcal.py -v w$i.uv --select "-uvrange(0,1.0)"
+		python acf_selfcal.py -v w$i.uv --select "-uvrange(0,1.0)" -m pselfcalr
+		python acf_selfcal.py -v w$i.uv --select "-uvrange(0,1.0)" -m aselfcalr
+		python acf_selfcal.py -v w$i.uv --select "-uvrange(0,1.0)" -m pselfcalr
 	done
