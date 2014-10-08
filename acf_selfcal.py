@@ -42,7 +42,7 @@ def invertr(vis, select, mapname, beamname):
 	invert.options = 'double,mfs';
 	invert.slop = 0.5
 	invert.stokes = 'ii'
-	invert.imsize = 1250
+	invert.imsize = 1500
 	invert.cell = 4
 	invert.robust= -2
 	tout = invert.snarf();
@@ -152,7 +152,7 @@ def uvcatr(fname):
 	os.system('rm -r '+fname)
 	os.system('mv '+fname+'.tmp '+fname)
 
-
+#
 
 def imager(vis, select, mapname, beamname, imname, modelname, maskname='', cutoff=0.0):
 	invertr(vis, select, mapname, beamname);
