@@ -16,6 +16,8 @@ parser.add_option('--tag', '-t', type='string', dest='tag', default='',
 	help = 'Naming tag to be carried [None]')
 parser.add_option('--defmcut', '-d', type='string', dest='defmcut', default='1e-2',
 	help = 'Default Cutoff for Masking, used if nan is returned as max [1e-2]')
+parser.add_option('--mode', '-m', type='string', dest='mode', default='selfcalr',
+	help = "Mode of Selfcal, either phase-selfcal [pselfcalr] or amp-selfcal (aselfcalr)")
 (options, args) = parser.parse_args();
 
 def getimmax(imname):
@@ -92,20 +94,35 @@ def selfcal(vis, select, modelname, interval=1.0, so = 'mfs,phase'):
 	selfcal.interval = interval;
 	tout = selfcal.snarf()
 
-#def selfcalr(options, mapname, beamname, imname, modelname, maskname, f=4., so='mfs,phase', interval='1'):
-#	
-#	invertr(options.vis, options.select, mapname, beamname);
-#	clean(mapname, beamname, modelname)
-#	restor(mapname, beamname, modelname, imname);
-#	immax, imunits = getimmax(imname);
-#	maths(imname, immax/f, maskname);
-#	clean(mapname, beamname, modelname, maskname, immax/(f*2))
-#	selfcal(options.vis, options.select, modelname, so=so, interval=interval);
-#	invertr(options.vis, options.select, mapname, beamname);
-#	clean(mapname, beamname, modelname)
-#	restor(mapname, beamname, modelname, imname);
+def pselfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,phase', interval='1'):
+	mapname = options.vis+options.tag+'.map'
+	beamname = options.vis+options.tag+'.beam'
+	imname=options.vis+options.tag+'.image';
+	modelname = options.vis+options.tag+'.model'
+	maskname = options.vis+options.tag+'.mask'
 
-def selfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,phase', interval='1'):
+	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
+	immax, imunits = getimmax(imname);
+	if str(immax)=='nan':
+		immax = float(options.defmcut);
+	maths(imname, immax/10, maskname);
+	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
+	#immax, imunits = getimmax(imname);
+	#if str(immax)=='nan':
+	#	immax = options.defmcut;
+	#maths(imname, immax/20., maskname);
+	#imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
+	selfcal(options.vis, options.select, modelname, so=so, interval=interval);
+	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
+	uvcatr(options.vis)
+
+def aselfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,amp', interval='100000'):
+	mapname = options.vis+options.tag+'.map'
+	beamname = options.vis+options.tag+'.beam'
+	imname=options.vis+options.tag+'.image';
+	modelname = options.vis+options.tag+'.model'
+	maskname = options.vis+options.tag+'.mask'
+
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
 	immax, imunits = getimmax(imname);
 	if str(immax)=='nan':
@@ -113,12 +130,25 @@ def selfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,ph
 	maths(imname, immax/10, maskname);
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
 	immax, imunits = getimmax(imname);
-	if str(immax)=='nan':
-		immax = options.defmcut;
-	maths(imname, immax/20., maskname);
-	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
+	#if str(immax)=='nan':
+	#	immax = options.defmcut;
+	#maths(imname, immax/20., maskname);
+	#imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
 	selfcal(options.vis, options.select, modelname, so=so, interval=interval);
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
+	uvcatr(options.vis)
+	
+def uvcatr(fname):
+	uvcat = mirexec.TaskUVCat()
+	uvcat.vis = fname
+	uvcat.out = fname+'.tmp'
+	print	'Writing in Gains for '+str(fname)
+	uvcat.snarf()
+	print 	'Deleting Temp File'
+	os.system('mv '+fname+'.tmp '+fname)
+	os.system('rm -r '+fname+'.tmp')
+
+
 
 def imager(vis, select, mapname, beamname, imname, modelname, maskname='', cutoff=0.0):
 	invertr(vis, select, mapname, beamname);
@@ -134,10 +164,12 @@ if __name__=="__main__":
 	if len(sys.argv)==1: 
 		parser.print_help();
 		dummy = sys.exit(0);
-	mapname = options.vis+options.tag+'.map'
-	beamname = options.vis+options.tag+'.beam'
-	imname=options.vis+options.tag+'.image';
-	modelname = options.vis+options.tag+'.model'
-	maskname = options.vis+options.tag+'.mask'
-	
-	selfcalr(options, mapname, beamname, imname, modelname, maskname);
+	#mapname = options.vis+options.tag+'.map'
+	#beamname = options.vis+options.tag+'.beam'
+	#imname=options.vis+options.tag+'.image';
+	#modelname = options.vis+options.tag+'.model'
+	#maskname = options.vis+options.tag+'.mask'
+	cmd = options.mode+'(options)'
+	#selfcalr(options, mapname, beamname, imname, modelname, maskname);
+	print cmd
+	exec(cmd)
