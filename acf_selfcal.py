@@ -94,7 +94,8 @@ def selfcal(vis, select, modelname, interval=1.0, so = 'mfs,phase'):
 	selfcal.interval = interval;
 	tout = selfcal.snarf()
 
-def pselfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,phase', interval='1'):
+#def pselfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,phase', interval='1'):
+def pselfcalr(options, so='mfs,phase', interval='1'):
 	mapname = options.vis+options.tag+'.map'
 	beamname = options.vis+options.tag+'.beam'
 	imname=options.vis+options.tag+'.image';
@@ -116,7 +117,8 @@ def pselfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,p
 	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
 	uvcatr(options.vis)
 
-def aselfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,amp', interval='100000'):
+#def aselfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,amp', interval='100000'):
+def aselfcalr(options, so='mfs,amp', interval='100000'):
 	mapname = options.vis+options.tag+'.map'
 	beamname = options.vis+options.tag+'.beam'
 	imname=options.vis+options.tag+'.image';
@@ -145,8 +147,8 @@ def uvcatr(fname):
 	print	'Writing in Gains for '+str(fname)
 	uvcat.snarf()
 	print 	'Deleting Temp File'
+	os.system('rm -r '+fname)
 	os.system('mv '+fname+'.tmp '+fname)
-	os.system('rm -r '+fname+'.tmp')
 
 
 
