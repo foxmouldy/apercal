@@ -18,6 +18,8 @@ parser.add_option('--defmcut', '-d', type='string', dest='defmcut', default='1e-
 	help = 'Default Cutoff for Masking, used if nan is returned as max [1e-2]')
 parser.add_option('--mode', '-m', type='string', dest='mode', default='selfcalr',
 	help = "Mode of Selfcal, either phase-selfcal [pselfcalr] or amp-selfcal (aselfcalr)")
+parser.add_option('--ergs', '-e', type='string', dest='ergs', default='',
+	help = "Extra arguments to be passed to the functions.")
 (options, args) = parser.parse_args();
 
 def getimmax(imname):
@@ -171,7 +173,10 @@ if __name__=="__main__":
 	#imname=options.vis+options.tag+'.image';
 	#modelname = options.vis+options.tag+'.model'
 	#maskname = options.vis+options.tag+'.mask'
-	cmd = options.mode+'(options)'
+	#print options
+	cmd = options.mode+'(options, '+options.ergs+')'
+	print cmd
+	#sys.exit(0)
 	#selfcalr(options, mapname, beamname, imname, modelname, maskname);
 	print cmd
 	exec(cmd)
