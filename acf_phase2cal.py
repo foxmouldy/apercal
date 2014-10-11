@@ -43,7 +43,7 @@ def splitspw(vis, spw):
 	uvaver.line = 'channel,60,2,1,1'
 	uvaver.snarf()
 
-	print "SPLIT'd ", self.vis, " -> ", wvis
+	print "SPLIT'd ", vis, " -> ", wvis
 
 
 class selfcal_threaded_masked(threading.Thread):
