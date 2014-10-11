@@ -57,17 +57,24 @@ class selfcal_threaded_masked(threading.Thread):
 	
 	def run(self):
 		
-		wvis = vis+'_spw'+str(spw)+'.uv'
+		wvis = self.vis+'_spw'+str(self.spw)+'.uv'
 
 		print "Thread for SPW"+str(self.spw)+" Started"	
 
-		pparams = Bunch(vis=wvis, maskname=mask, select='-uvrange(0,1)', mode='pselfcalr', tag='', defmcut='1e-2')
+		pparams = Bunch(vis=wvis, maskname=self.mask, select='-uvrange(0,1)', mode='pselfcalr', tag='', defmcut='1e-2')
 
 		print "Phase Selfcal for "+wvis
 		acf_selfcal.pselfcalr(pparams)
 
-		print "Done Selfcal-LSM for "+wvis
+		print "Thread for SPW"+str(self.spw)+" Started"	
 
+		#pparams = Bunch(vis=wvis, select='-uvrange(0,1)', mode='aselfcalr', tag='', defmcut='1e-2')
+
+		#print "Amp Selfcal for "+wvis
+		#acf_selfcal.aselfcalr(pparams)
+
+		print "Done Selfcal-LSM for "+wvis
+		time.sleep(0.1)
 	def get_result(self):
 		return self.res
 
@@ -94,13 +101,13 @@ class selfcal_threaded(threading.Thread):
 		print "Phase Selfcal for "+wvis
 		acf_selfcal.pselfcalr(pparams)
 
-		print "Amp Selfcal for "+wvis
-		
-		aparams = Bunch(vis=wvis, select='-uvrange(0,1)', mode='aselfcalr', tag='', defmcut='1e-2',
-			ergs="interval=1200")
-		acf_selfcal.aselfcalr(aparams)
+		pparams = Bunch(vis=wvis, select='-uvrange(0,1)', mode='pselfcalr', tag='', defmcut='5e-3')
+
+		print "Phase Selfcal for "+wvis
+		acf_selfcal.pselfcalr(pparams)
 
 		print "Done Selfcal for "+wvis
+		time.sleep(0.1)
 
 	def get_result(self):
 		return self.res
@@ -111,47 +118,35 @@ def full_imager(vis, defmcut='1e-2', select=''):
 	modelname =  vis+'.model'
 	imagename = vis+'.image'
 	maskname = vis+'.mask'
-	acf_selfcal.invertr(vis+'_spw*.uv', select, mapname, beamname, robust=0.0)
-	acf_selfcal.clean(mapname, beamname, modelname)
-	acf_selfcal.restor(mapname, beamname, modelname, imagename)
-	immax, imunits = acf_selfcal.getimmax(imname);
+	acf_selfcal.imager(vis+'_spw*.uv', select, mapname, beamname, imagename, modelname, maskname=maskname, cutoff=1e-3)
+	immax, imunits = acf_selfcal.getimmax(imagename);
 	if str(immax)=='nan':
 		immax = float(defmcut);
-	acf_selfcal.maths(imname, immax/10, maskname);
-	acf_selfcal.imager(vis, select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.)
+	acf_selfcal.maths(imagename, immax/10, maskname);
+	acf_selfcal.imager(vis+'_spw*.uv', select, mapname, beamname, imagename, modelname, maskname=maskname, cutoff=immax/30.)
 
-#print 'starting'
 
 if __name__=="__main__":
 	s = []
 	print "Splitting "+options.vis
 	i = 0
 	for i in range(0,8):
+		time.sleep(0.1)
 		res = ''
 		s.append(selfcal_threaded(options.vis, i+1, res))
 		s[i].start()
-
 	for j in range(0,8):
 		s[j].join()
 	
-
 	select = ''
 	full_imager(options.vis)
 
 	s = []
 	for i in range(0,8):
+		time.sleep(0.1)
 		res = ''
 		s.append(selfcal_threaded_masked(options.vis,  i+1, res, options.vis+'.mask',))
 		s[i].start()
-
 	for j in range(0,8):
 		s[j].join()
-	
 	full_imager(options.vis)
-	#mapname = options.vis+'.map'
-	#beamname =  options.vis+'.beam'
-	#modelname =  options.vis+'.model'
-	#imagename = options.vis+'.image'
-	#acf_selfcal.invertr(options.vis+'_spw*.uv', select, mapname, beamname, robust=0.0)
-	#acf_selfcal.clean(mapname, beamname, modelname)
-	#acf_selfcal.restor(mapname, beamname, modelname, imagename)

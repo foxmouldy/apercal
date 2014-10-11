@@ -101,6 +101,12 @@ def pselfcalr(options, maskname=None, so='mfs,phase', interval='1'):
 	Phase Selfcal
 	'''
 	if maskname!=None:
+		mapname = options.vis+options.tag+'.map'
+		beamname = options.vis+options.tag+'.beam'
+		imname = options.vis+options.tag+'.image'
+		modelname = options.vis+options.tag+'.model'
+		maskname = maskname
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
 		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
 	else:
 		mapname = options.vis+options.tag+'.map'
@@ -123,6 +129,13 @@ def aselfcalr(options, maskname=None, so='mfs,amp', interval='100000'):
 	Amplitude selfcal.
 	'''
 	if maskname!=None:
+		mapname = options.vis+options.tag+'.map'
+		beamname = options.vis+options.tag+'.beam'
+		imname = options.vis+options.tag+'.image'
+		modelname = options.vis+options.tag+'.model'
+		maskname = maskname
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
+
 		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
 	else:
 		mapname = options.vis+options.tag+'.map'
