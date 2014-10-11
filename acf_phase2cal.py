@@ -42,6 +42,7 @@ def splitspw(vis, spw):
 	uvaver.out = wvis
 	uvaver.line = 'channel,60,2,1,1'
 	uvaver.snarf()
+	return wvis
 
 	print "SPLIT'd ", vis, " -> ", wvis
 
@@ -55,7 +56,11 @@ class selfcal_threaded_masked(threading.Thread):
 		self.mask = mask
 	
 	def run(self):
+		
+		wvis = vis+'_spw'+str(spw)+'.uv'
+
 		print "Thread for SPW"+str(self.spw)+" Started"	
+
 		pparams = Bunch(vis=wvis, maskname=mask, select='-uvrange(0,1)', mode='pselfcalr', tag='', defmcut='1e-2')
 
 		print "Phase Selfcal for "+wvis
@@ -76,8 +81,9 @@ class selfcal_threaded(threading.Thread):
 		self.res = res
 	
 	def run(self):
-		print "Thread for SPW"+str(self.spw)+" Started"	
-		splitspw(self.vis, self.spw)
+		print "Thread for SPW"+str(self.spw)+" Started"
+		
+		wvis = splitspw(self.vis, self.spw)
 		
 		pgflag(wvis, 'ii', '3,5,5,3,5,3') 
 		
