@@ -26,7 +26,6 @@ def getimmax(imname):
 	imstat = mirexec.TaskImStat()
 	imstat.in_ = imname;
 	imstats = imstat.snarf();
-	#print imstats;
 	immax = float(imstats[0][10][51:61]);
 	imunits = imstats[0][4];
 	return immax, imunits
@@ -97,51 +96,51 @@ def selfcal(vis, select, modelname, interval=1.0, so = 'mfs,phase'):
 	selfcal.interval = interval;
 	tout = selfcal.snarf()
 
-#def pselfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,phase', interval='1'):
-def pselfcalr(options, so='mfs,phase', interval='1'):
-	mapname = options.vis+options.tag+'.map'
-	beamname = options.vis+options.tag+'.beam'
-	imname=options.vis+options.tag+'.image';
-	modelname = options.vis+options.tag+'.model'
-	maskname = options.vis+options.tag+'.mask'
+def pselfcalr(options, maskname=None, so='mfs,phase', interval='1'):
+	'''
+	Phase Selfcal
+	'''
+	if maskname!=None:
+		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
+	else:
+		mapname = options.vis+options.tag+'.map'
+		beamname = options.vis+options.tag+'.beam'
+		imname = options.vis+options.tag+'.image';
+		modelname = options.vis+options.tag+'.model'
+		maskname = options.vis+options.tag+'.mask'
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
+		immax, imunits = getimmax(imname);
+		if str(immax)=='nan':
+			immax = float(options.defmcut);
+		maths(imname, immax/10, maskname);
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
+		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
+		uvcatr(options.vis)
 
-	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
-	immax, imunits = getimmax(imname);
-	if str(immax)=='nan':
-		immax = float(options.defmcut);
-	maths(imname, immax/10, maskname);
-	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
-	#immax, imunits = getimmax(imname);
-	#if str(immax)=='nan':
-	#	immax = options.defmcut;
-	#maths(imname, immax/20., maskname);
-	#imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
-	selfcal(options.vis, options.select, modelname, so=so, interval=interval);
-	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
-	uvcatr(options.vis)
-
-#def aselfcalr(options, mapname, beamname, imname, modelname, maskname, so='mfs,amp', interval='100000'):
-def aselfcalr(options, so='mfs,amp', interval='100000'):
-	mapname = options.vis+options.tag+'.map'
-	beamname = options.vis+options.tag+'.beam'
-	imname=options.vis+options.tag+'.image';
-	modelname = options.vis+options.tag+'.model'
-	maskname = options.vis+options.tag+'.mask'
-
-	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
-	immax, imunits = getimmax(imname);
-	if str(immax)=='nan':
-		immax = float(options.defmcut);
-	maths(imname, immax/10, maskname);
-	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
-	immax, imunits = getimmax(imname);
-	#if str(immax)=='nan':
-	#	immax = options.defmcut;
-	#maths(imname, immax/20., maskname);
-	#imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
-	selfcal(options.vis, options.select, modelname, so=so, interval=interval);
-	imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
-	uvcatr(options.vis)
+def aselfcalr(options, maskname=None, so='mfs,amp', interval='100000'):
+	'''
+	Amplitude selfcal.
+	'''
+	if maskname!=None:
+		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
+	else:
+		mapname = options.vis+options.tag+'.map'
+		beamname = options.vis+options.tag+'.beam'
+		imname=options.vis+options.tag+'.image';
+		modelname = options.vis+options.tag+'.model'
+		maskname = options.vis+options.tag+'.mask'
+		
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=0.0);
+		immax, imunits = getimmax(imname);
+		if str(immax)=='nan':
+			immax = float(options.defmcut);
+		maths(imname, immax/10, maskname);
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
+		immax, imunits = getimmax(imname);
+		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
+		uvcatr(options.vis)
 	
 def uvcatr(fname):
 	uvcat = mirexec.TaskUVCat()

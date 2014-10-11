@@ -34,8 +34,41 @@ def pgflag(vis, stokes, flagpar):
 	pgflag.command = '<';
 	pgflag.snarf();
 
+def splitspw(vis, spw):
+	uvaver = mirexec.TaskUVAver()
+	uvaver.vis = vis
+	uvaver.select = 'window('+str(spw)+')'
+	wvis = vis+'_spw'+str(spw)+'.uv'
+	uvaver.out = wvis
+	uvaver.line = 'channel,60,2,1,1'
+	uvaver.snarf()
 
-class uv_split_spws(threading.Thread):
+	print "SPLIT'd ", self.vis, " -> ", wvis
+
+
+class selfcal_threaded_masked(threading.Thread):
+	def __init__(self, vis, spw, res, mask):
+		threading.Thread.__init__(self)		
+		self.vis = vis 
+		self.spw = spw
+		self.res = res
+		self.mask = mask
+	
+	def run(self):
+		print "Thread for SPW"+str(self.spw)+" Started"	
+		pparams = Bunch(vis=wvis, maskname=mask, select='-uvrange(0,1)', mode='pselfcalr', tag='', defmcut='1e-2')
+
+		print "Phase Selfcal for "+wvis
+		acf_selfcal.pselfcalr(pparams)
+
+		print "Done Selfcal-LSM for "+wvis
+
+	def get_result(self):
+		return self.res
+
+
+
+class selfcal_threaded(threading.Thread):
 	def __init__(self, vis, spw, res):
 		threading.Thread.__init__(self)		
 		self.vis = vis 
@@ -44,16 +77,7 @@ class uv_split_spws(threading.Thread):
 	
 	def run(self):
 		print "Thread for SPW"+str(self.spw)+" Started"	
-		uvaver = mirexec.TaskUVCat()
-		uvaver.vis = self.vis
-		uvaver.select = 'window('+str(self.spw)+')'
-		wvis = self.vis+'_spw'+str(self.spw)+'.uv'
-		uvaver.out = wvis
-		uvaver.line = 'channel,60,2,1,1'
-		uvaver.snarf()
-
-
-		print "UVCAT'd ", self.vis, " -> ", wvis
+		splitspw(self.vis, self.spw)
 		
 		pgflag(wvis, 'ii', '3,5,5,3,5,3') 
 		
@@ -67,15 +91,30 @@ class uv_split_spws(threading.Thread):
 		print "Amp Selfcal for "+wvis
 		
 		aparams = Bunch(vis=wvis, select='-uvrange(0,1)', mode='aselfcalr', tag='', defmcut='1e-2',
-			ergs="interval=120")
+			ergs="interval=1200")
 		acf_selfcal.aselfcalr(aparams)
 
-		print "Done for "+wvis
+		print "Done Selfcal for "+wvis
 
 	def get_result(self):
 		return self.res
 
-print 'starting'
+def full_imager(vis, defmcut='1e-2', select=''):
+	mapname = vis+'.map'
+	beamname =  vis+'.beam'
+	modelname =  vis+'.model'
+	imagename = vis+'.image'
+	maskname = vis+'.mask'
+	acf_selfcal.invertr(vis+'_spw*.uv', select, mapname, beamname, robust=0.0)
+	acf_selfcal.clean(mapname, beamname, modelname)
+	acf_selfcal.restor(mapname, beamname, modelname, imagename)
+	immax, imunits = acf_selfcal.getimmax(imname);
+	if str(immax)=='nan':
+		immax = float(defmcut);
+	acf_selfcal.maths(imname, immax/10, maskname);
+	acf_selfcal.imager(vis, select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.)
+
+#print 'starting'
 
 if __name__=="__main__":
 	s = []
@@ -83,17 +122,30 @@ if __name__=="__main__":
 	i = 0
 	for i in range(0,8):
 		res = ''
-		s.append(uv_split_spws(options.vis, i+1, res))
+		s.append(selfcal_threaded(options.vis, i+1, res))
 		s[i].start()
 
 	for j in range(0,8):
 		s[j].join()
+	
 
-	select = ''	
-	mapname = options.vis+'.map'
-	beamname =  options.vis+'.beam'
-	modelname =  options.vis+'.model'
-	imagename = options.vis+'.image'
-	acf_selfcal.invertr(options.vis+'_spw*.uv', select, mapname, beamname, robust=0.0)
-	acf_selfcal.clean(mapname, beamname, modelname)
-	acf_selfcal.restor(mapname, beamname, modelname, imagename)
+	select = ''
+	full_imager(options.vis)
+
+	s = []
+	for i in range(0,8):
+		res = ''
+		s.append(selfcal_threaded_masked(options.vis,  i+1, res, options.vis+'.mask',))
+		s[i].start()
+
+	for j in range(0,8):
+		s[j].join()
+	
+	full_imager(options.vis)
+	#mapname = options.vis+'.map'
+	#beamname =  options.vis+'.beam'
+	#modelname =  options.vis+'.model'
+	#imagename = options.vis+'.image'
+	#acf_selfcal.invertr(options.vis+'_spw*.uv', select, mapname, beamname, robust=0.0)
+	#acf_selfcal.clean(mapname, beamname, modelname)
+	#acf_selfcal.restor(mapname, beamname, modelname, imagename)
