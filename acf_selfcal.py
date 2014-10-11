@@ -31,10 +31,11 @@ def getimmax(imname):
 	imunits = imstats[0][4];
 	return immax, imunits
 
-def invertr(vis, select, mapname, beamname):
+def invertr(vis, select, mapname, beamname, robust=-2.0, line=''):
 	invert = mirexec.TaskInvert()
 	invert.vis = vis;
 	invert.select = select;
+	invert.line = line;
 	os.system('rm -r '+mapname)
 	os.system('rm -r '+beamname)
 	invert.map = mapname
@@ -44,7 +45,7 @@ def invertr(vis, select, mapname, beamname):
 	invert.stokes = 'ii'
 	invert.imsize = 1500
 	invert.cell = 4
-	invert.robust= -2
+	invert.robust= robust 
 	tout = invert.snarf();
 
 def clean(mapname, beamname, modelname, maskname=None, cutoff=0.0):
@@ -168,15 +169,6 @@ if __name__=="__main__":
 	if len(sys.argv)==1: 
 		parser.print_help();
 		dummy = sys.exit(0);
-	#mapname = options.vis+options.tag+'.map'
-	#beamname = options.vis+options.tag+'.beam'
-	#imname=options.vis+options.tag+'.image';
-	#modelname = options.vis+options.tag+'.model'
-	#maskname = options.vis+options.tag+'.mask'
-	#print options
 	cmd = options.mode+'(options, '+options.ergs+')'
-	print cmd
-	#sys.exit(0)
-	#selfcalr(options, mapname, beamname, imname, modelname, maskname);
 	print cmd
 	exec(cmd)
