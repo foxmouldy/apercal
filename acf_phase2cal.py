@@ -36,11 +36,12 @@ def pgflag(vis, stokes, flagpar):
 
 def splitspw(vis, spw):
 	uvaver = mirexec.TaskUVAver()
+	uvaver.stokes='ii'
 	uvaver.vis = vis
 	uvaver.select = 'window('+str(spw)+')'
 	wvis = vis+'_spw'+str(spw)+'.uv'
 	uvaver.out = wvis
-	uvaver.line = 'channel,60,2,1,1'
+	uvaver.line = 'channel,58,2,1,1'
 	uvaver.snarf()
 	return wvis
 
@@ -92,7 +93,7 @@ class selfcal_threaded(threading.Thread):
 		
 		wvis = splitspw(self.vis, self.spw)
 		
-		pgflag(wvis, 'ii', '3,5,5,3,5,3') 
+		pgflag(wvis, 'ii', '3,1,1,3,5,3') 
 		
 		print "Flagged "+str(self.spw)
 
@@ -104,6 +105,12 @@ class selfcal_threaded(threading.Thread):
 		pparams = Bunch(vis=wvis, select='-uvrange(0,1)', mode='pselfcalr', tag='', defmcut='5e-3')
 
 		print "Phase Selfcal for "+wvis
+		acf_selfcal.pselfcalr(pparams)
+
+
+		pparams = Bunch(vis=wvis, select='-uvrange(0,1)', mode='aselfcalr', tag='', defmcut='5e-3', ergs="interval=10")
+
+		print "Amp Selfcal for "+wvis
 		acf_selfcal.pselfcalr(pparams)
 
 		print "Done Selfcal for "+wvis
