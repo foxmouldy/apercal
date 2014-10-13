@@ -131,6 +131,8 @@ def full_imager(vis, defmcut='1e-2', select=''):
 		immax = float(defmcut);
 	acf_selfcal.maths(imagename, immax/10, maskname);
 	acf_selfcal.imager(vis+'_spw*.uv', select, mapname, beamname, imagename, modelname, maskname=maskname, cutoff=immax/30.)
+	acf_selfcal.maths(imagename, immax/20, maskname);
+	acf_selfcal.imager(vis+'_spw*.uv', select, mapname, beamname, imagename, modelname, maskname=maskname, cutoff=immax/40.)
 
 
 if __name__=="__main__":
