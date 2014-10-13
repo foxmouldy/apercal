@@ -40,9 +40,15 @@ def splitspw(vis, spw):
 	uvaver.vis = vis
 	uvaver.select = 'window('+str(spw)+')'
 	wvis = vis+'_spw'+str(spw)+'.uv'
-	uvaver.out = wvis
-	uvaver.line = 'channel,58,2,1,1'
-	uvaver.snarf()
+
+	if os.path.isdir(wvis)==False:
+		uvaver.out = wvis
+		uvaver.line = 'channel,58,2,1,1'
+		uvaver.snarf()
+		pgflag(wvis, 'ii', '3,1,1,3,5,3') 
+		pgflag(wvis, 'ii', '3,1,1,3,5,3') 
+	else:
+		pass
 	return wvis
 
 	print "SPLIT'd ", vis, " -> ", wvis
@@ -92,10 +98,10 @@ class selfcal_threaded(threading.Thread):
 		print "Thread for SPW"+str(self.spw)+" Started"
 		
 		wvis = splitspw(self.vis, self.spw)
-		
-		pgflag(wvis, 'ii', '3,1,1,3,5,3') 
-		
-		print "Flagged "+str(self.spw)
+		os.system("rm -r "+wvis+".*")	
+		#pgflag(wvis, 'ii', '3,1,1,3,5,3') 
+		#pgflag(wvis, 'ii', '3,1,1,3,5,3') 
+		#print "Flagged "+str(self.spw)
 
 		pparams = Bunch(vis=wvis, select='-uvrange(0,1)', mode='pselfcalr', tag='', defmcut='1e-2')
 
@@ -108,10 +114,10 @@ class selfcal_threaded(threading.Thread):
 		acf_selfcal.pselfcalr(pparams)
 
 
-		pparams = Bunch(vis=wvis, select='-uvrange(0,1)', mode='aselfcalr', tag='', defmcut='5e-3', ergs="interval=10")
+		#pparams = Bunch(vis=wvis, select='-uvrange(0,1)', mode='aselfcalr', tag='', defmcut='5e-3', ergs="interval=10")
 
-		print "Amp Selfcal for "+wvis
-		acf_selfcal.pselfcalr(pparams)
+		#print "Amp Selfcal for "+wvis
+		#acf_selfcal.pselfcalr(pparams)
 
 		print "Done Selfcal for "+wvis
 		time.sleep(0.1)

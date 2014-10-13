@@ -123,6 +123,11 @@ def pselfcalr(options, maskname=None, so='mfs,phase', interval='1'):
 		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
 		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
 		uvcatr(options.vis)
+		maths(imname, immax/20, maskname);
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/40.);
+		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
+		uvcatr(options.vis)
 
 def aselfcalr(options, maskname=None, so='mfs,amp', interval='100000'):
 	'''
@@ -154,6 +159,12 @@ def aselfcalr(options, maskname=None, so='mfs,amp', interval='100000'):
 		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
 		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
 		uvcatr(options.vis)
+		maths(imname, immax/20, maskname);
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/30.);
+		immax, imunits = getimmax(imname);
+		selfcal(options.vis, options.select, modelname, so=so, interval=interval);
+		imager(options.vis, options.select, mapname, beamname, imname, modelname, maskname=maskname, cutoff=immax/60.);
+		uvcatr(options.vis)		
 	
 def uvcatr(fname):
 	uvcat = mirexec.TaskUVCat()
