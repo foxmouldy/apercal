@@ -109,7 +109,7 @@ def imager(config)
 	maskname = config.get('imaging', 'maskname')
 	cutoff = config.get('imaging', 'cutoff')
 	line = config.get('imaging', 'line')
-	invertr(vis, select, mapname, beamname);
+	invertr(vis, select, mapname, beamname, line);
 	clean(mapname, beamname, modelname)
 	restor(mapname, beamname, modelname, imname);
 	immax, imunits = getimmax(imname);
