@@ -19,20 +19,23 @@ def getimmax(imname):
 
 def pgflag(config):
 	pgflag = mirexecb.TaskPGFlag();
-	pgflag.vis = config.get('files', 'vis')
-	pgflag.stokes = config.get('settings', 'stokes')
-	pgflag.flagpar = config.get('flag', 'flagpar')
-	pgflag.options = 'nodisp';
-	pgflag.command = '<';
-	pgflag.snarf();
+	for p in config.items('mfiles')[0:-1]:
+		pgflag.vis = config.get('mfiles', p[0])
+		pgflag.stokes = config.get('settings', 'stokes')
+		pgflag.flagpar = config.get('flag', 'flagpar')
+		pgflag.options = 'nodisp';
+		pgflag.command = '<';
+		pgflag.snarf();
 
 def calcals(config):
 	mfcal = mirexec.TaskMfCal();
-	for p in config.items('mfiles')[0:-1]:
+	for p in config.items('mfiles')[0:-2]:
 		mfcal.vis = config.get('mfiles', p[0]);
-		mfcal.edge = config.get('mfcal', 'edge')
-		mfcal.line = config.get('mfcal', 'line')
-		mfcal.interval = 1000000.;
+		if config.get('mfcal', 'edge').upper()!='NONE':
+			mfcal.edge = config.get('mfcal', 'edge')
+		if config.get('mfcal', 'line').upper()!='NONE':
+			mfcal.line = config.get('mfcal', 'line')
+		mfcal.interval = 10000;
 		mfcal.snarf();
 
 def cal2srcs(config):
@@ -63,22 +66,30 @@ def iofits(config):
 	using the carma-miriad task wsrtfits.
 	'''
 	for p in config.items('uvfits'):
-		I = p[0]
+		I = p[1]
 		O = config.get('mfiles', p[0])
 		flags = config.get('flag', 'flags')
-		wsrtfits = mirexecb.TaskWSRTFits()
-		wsrtfits.in_ = 
-		wsrtfits.out = O
-		wsrtfits.velocity = 'optbary'
-		attsys = mirexeb.TaskAttsys()
-		attsys.vis = O
-		attsys.optons='apply'
-		attsys.out = '_tmp_vis'
+		#TODO: Fix the wsrtfits and attsys modules
+		#wsrtfits = mirexecb.TaskWSRTFits()
+		#wsrtfits.in_ = I 
+		#wsrtfits.out = O
+		#wsrtfits.op = 'uvin'
+		#wsrtfits.velocity = 'optbary'
+		#wsrtfits.snarf()
+		cmd = 'wsrtfits in='+I+' out='+O+' op=uvin velocity=optbary';
+		os.system(cmd);
+		#attsys = mirexecb.TaskAttsys()
+		#attsys.vis = O
+		#attsys.optons='apply'
+		#attsys.out = '_tmp_vis'
+		#attsys.snarf()
+		cmd = 'attsys vis='+O+' out=_tmp_vis';
+		os.system(cmd);
 		cmd = 'rm -r '+O;
 		os.system(cmd);
 		cmd = 'mv _tmp_vis '+O;
 		os.system(cmd);
-		for f in flags:
+		for f in flags.split(','):
 			uvflag = mirexec.TaskUVFlag();
 			uvflag.vis = O;
 			uvflag.select = f
@@ -99,17 +110,18 @@ def uvlin(config):
 	uvlin.out = out
 	uvlin.snarf()
 
-def imager(config)
+def imager(config):
 	vis = config.get('imaging', 'vis')
 	select = config.get('imaging', 'select')
 	mapname = config.get('imaging', 'map')
-	beamname = config.get('imaging' 'beam')
+	beamname = config.get('imaging', 'beam')
 	imname = config.get('imaging', 'image')
 	modelname = config.get('imaging', 'model')
-	maskname = config.get('imaging', 'maskname')
+	maskname = config.get('imaging', 'mask')
 	cutoff = config.get('imaging', 'cutoff')
 	line = config.get('imaging', 'line')
-	invertr(vis, select, mapname, beamname, line);
+	robust = config.get('imaging', 'robust')
+	invertr(vis, select, mapname, beamname, robust, line);
 	clean(mapname, beamname, modelname)
 	restor(mapname, beamname, modelname, imname);
 	immax, imunits = getimmax(imname);
@@ -120,7 +132,8 @@ def imager(config)
 def invertr(vis, select, mapname, beamname, robust=-2.0, line=''):
 	invert = mirexec.TaskInvert()
 	invert.vis = vis;
-	invert.select = select;
+	if select.upper()!='NONE':
+		invert.select = select;
 	invert.line = line;
 	os.system('rm -r '+mapname)
 	os.system('rm -r '+beamname)

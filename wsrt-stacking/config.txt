@@ -8,11 +8,16 @@ cutoff=2e-2
 model = src_line.model
 map = src_line.map
 beam = src_line.beam
-line=channel,185,142,44
+image = src_line.image
+mask = '' 
+line=channel,185,142,44,1
+select = None 
 
 [mfcal]
-edge = 2,10
-line = chan,885,5
+edge = None 
+line = None 
+refant = 1
+
 [settings]
 line = channel,100,1,1,1
 chans = 100,350,650,800
@@ -20,9 +25,9 @@ order = 5
 stokes = qq
 
 [uvfits]
-cal1 = cal1.UVF
-cal2 = cal2.UVF
-src = src.UVF
+cal1 = 11401782_S0_T0.UVF
+cal2 = 11401780_S0_T0.UVF
+src = 11401781_S0_T0.UVF
 
 [mfiles]
 cal1 = cal1.uv
@@ -39,4 +44,5 @@ flagpar = 5,3,3,3,1
 flags = auto,ant(6),shadow(25)
 
 [system]
-calls = iofits,pgflag,calcals,cal2srcs
+calls = calcals
+calls2 = iofits,pgflag,calcals,cal2srcs,uvlin,imager
