@@ -9,8 +9,8 @@ model = src_line.model
 map = src_line.map
 beam = src_line.beam
 image = src_line.image
-mask = '' 
-line=channel,185,142,44,1
+mask = src_line.mask
+line=channel,185,142,4,4
 select = None 
 
 [mfcal]
@@ -22,12 +22,12 @@ refant = 1
 line = channel,100,1,1,1
 chans = 100,350,650,800
 order = 5 
-stokes = qq
+mode = line
 
 [uvfits]
-cal1 = 11401782_S0_T0.UVF
-cal2 = 11401780_S0_T0.UVF
-src = 11401781_S0_T0.UVF
+cal1 = 11401448_S0_T0.UVF
+cal2 = 11401450_S0_T0.UVF
+src = 11401449_S0_T0.UVF
 
 [mfiles]
 cal1 = cal1.uv
@@ -42,7 +42,11 @@ uvcat = nocal
 [flag]
 flagpar = 5,3,3,3,1
 flags = auto,ant(6),shadow(25)
+stokes = qq
 
 [system]
-calls = calcals
+calls = imager
+calls5 = uvlin,imager
+calls4 = calcals,cal2srcs,uvlin,imager
 calls2 = iofits,pgflag,calcals,cal2srcs,uvlin,imager
+calls3 = calcals

@@ -21,7 +21,7 @@ def pgflag(config):
 	pgflag = mirexecb.TaskPGFlag();
 	for p in config.items('mfiles')[0:-1]:
 		pgflag.vis = config.get('mfiles', p[0])
-		pgflag.stokes = config.get('settings', 'stokes')
+		pgflag.stokes = config.get('flag', 'stokes')
 		pgflag.flagpar = config.get('flag', 'flagpar')
 		pgflag.options = 'nodisp';
 		pgflag.command = '<';
@@ -36,6 +36,7 @@ def calcals(config):
 		if config.get('mfcal', 'line').upper()!='NONE':
 			mfcal.line = config.get('mfcal', 'line')
 		mfcal.interval = 10000;
+		mfcal.refant = config.get('mfcal', 'refant')
 		mfcal.snarf();
 
 def cal2srcs(config):
@@ -99,16 +100,18 @@ def iofits(config):
 def uvlin(config):
 	vis = config.get('mfiles', 'src')
 	chans = config.get('settings', 'chans')
-	order = int(config.get('settings', 'order'))
+	order = config.get('settings', 'order')
 	mode = config.get('settings', 'mode')
 	out = config.get('mfiles', 'src_line')
-	uvlin = mirexecb.TaksUVLin()
-	uvlin.vis = vis
-	uvlin.chans = chans
-	uvlin.order = order
-	uvlin.mode = mode
-	uvlin.out = out
-	uvlin.snarf()
+	cmd = 'uvlin vis='+vis+' chans='+chans+' order='+order+' mode='+mode+' out='+out;
+	os.system(cmd)
+	#uvlin = mirexecb.TaskUVLin()
+	#uvlin.vis = vis
+	#uvlin.chans = chans
+	#uvlin.order = order
+	#uvlin.mode = mode
+	#uvlin.out = out
+	#uvlin.snarf()
 
 def imager(config):
 	vis = config.get('imaging', 'vis')
@@ -121,7 +124,9 @@ def imager(config):
 	cutoff = config.get('imaging', 'cutoff')
 	line = config.get('imaging', 'line')
 	robust = config.get('imaging', 'robust')
-	invertr(vis, select, mapname, beamname, robust, line);
+	options = config.get('imaging', 'options')
+	imsize = config.get('imaging', 'imsize')
+	invertr(vis, select, mapname, beamname,  options, imsize, robust, line)
 	clean(mapname, beamname, modelname)
 	restor(mapname, beamname, modelname, imname);
 	immax, imunits = getimmax(imname);
@@ -129,7 +134,7 @@ def imager(config):
 	clean(mapname, beamname, modelname, maskname, cutoff)
 	restor(mapname, beamname, modelname, imname);
 
-def invertr(vis, select, mapname, beamname, robust=-2.0, line=''):
+def invertr(vis, select, mapname, beamname, options, imsize, robust=-2.0, line='', ):
 	invert = mirexec.TaskInvert()
 	invert.vis = vis;
 	if select.upper()!='NONE':
@@ -139,10 +144,10 @@ def invertr(vis, select, mapname, beamname, robust=-2.0, line=''):
 	os.system('rm -r '+beamname)
 	invert.map = mapname
 	invert.beam = beamname
-	invert.options = 'double,mfs';
+	invert.options = options
 	invert.slop = 0.5
 	invert.stokes = 'ii'
-	invert.imsize = 1500
+	invert.imsize = imsize
 	invert.cell = 4
 	invert.robust= robust 
 	tout = invert.snarf();
@@ -160,3 +165,21 @@ def clean(mapname, beamname, modelname, maskname=None, cutoff=0.0, niters=1000):
 	os.system('rm -r '+modelname);
 	clean.out = modelname; 
 	clean.snarf()
+
+
+def restor(mapname, beamname, modelname, imname):
+	os.system('rm -r '+imname)
+	restor = mirexec.TaskRestore()
+	restor.beam = beamname;
+	restor.map = mapname
+	restor.model = modelname
+	restor.out = imname
+	restor.snarf()
+
+def maths(imname, cutoff, maskname):
+	os.system('rm -r '+maskname);
+	maths = mirexec.TaskMaths()
+	maths.exp = imname;
+	maths.mask = imname+'.gt.'+str(cutoff);
+	maths.out = maskname;
+	maths.snarf()
