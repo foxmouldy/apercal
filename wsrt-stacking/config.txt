@@ -1,3 +1,42 @@
-[main]
-uvfile = src1.uv
+[imaging]
+vis = src_line.uv
+imsize = 10
+cell = 4
+robust = 0.5
+options = double
+cutoff=2e-2
+model = src_line.model
+map = src_line.map
+beam = src_line.beam
+line=channel,185,142,44
+
+[mfcal]
+edge = 2,10
+line = chan,885,5
+[settings]
 line = channel,100,1,1,1
+chans = 100,350,650,800
+order = 5 
+stokes = qq
+
+[uvfits]
+cal1 = cal1.UVF
+cal2 = cal2.UVF
+src = src.UVF
+
+[mfiles]
+cal1 = cal1.uv
+cal2 = cal2.uv
+src = src.uv
+src_line = src_line.uv
+
+[options]
+invert = mfs,double
+uvcat = nocal 
+
+[flag]
+flagpar = 5,3,3,3,1
+flags = auto,ant(6),shadow(25)
+
+[system]
+calls = iofits,pgflag,calcals,cal2srcs
