@@ -1,6 +1,6 @@
 [imaging]
 vis = src_line.uv
-imsize = 10
+imsize = 10 
 cell = 4
 robust = 0.5
 options = double
@@ -14,20 +14,20 @@ line=channel,185,142,4,4
 select = None 
 
 [mfcal]
-edge = None 
-line = None 
+edge = 5,10
+line = chan,885,5
 refant = 1
 
 [settings]
 line = channel,100,1,1,1
 chans = 100,350,650,800
-order = 5 
+order = 2 
 mode = line
 
 [uvfits]
-cal1 = 11401448_S0_T0.UVF
-cal2 = 11401450_S0_T0.UVF
-src = 11401449_S0_T0.UVF
+cal1 = 11307440_S0_T0.UVF
+cal2 = 11307442_S0_T0.UVF
+src = 11307441_S0_T0.UVF
 
 [mfiles]
 cal1 = cal1.uv
@@ -40,13 +40,14 @@ invert = mfs,double
 uvcat = nocal 
 
 [flag]
-flagpar = 5,3,3,3,1
-flags = auto,ant(6),shadow(25)
+flagpar = 4,5,5,3,5,3
+flagpar2 = 5,3,3,3,5,3
+flags = auto,an(3),an(5),ant(6),shadow(25)
 stokes = qq
 
 [system]
-calls = imager
+calls = cleanup,iofits,pgflag,calcals,cal2srcs,uvlin,imager
 calls5 = uvlin,imager
 calls4 = calcals,cal2srcs,uvlin,imager
-calls2 = iofits,pgflag,calcals,cal2srcs,uvlin,imager
 calls3 = calcals
+calls2 = imager

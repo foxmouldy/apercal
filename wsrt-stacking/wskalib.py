@@ -7,6 +7,10 @@ import mirexec
 from apercal import mirexecb
 from optparse import OptionParser
 
+def cleanup(config):
+	for p in config.items('mfiles'):
+		os.system('rm -r '+p[0]+'*')
+		os.system('rm -r '+p[1]+'*')
 
 def getimmax(imname):
 	imstat = mirexec.TaskImStat()
