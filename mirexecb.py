@@ -1016,6 +1016,10 @@ class TaskTsysmed (TaskBase):
 class TaskAttsys (TaskBase):
 	_keywords = ['vis', 'out', 'tsysif', 'factor', 'options'];
 	_options = ['apply', 'unapply', 'auto', 'redo', 'inverse', 'scale', 'nocal', 'nopass', 'nopol']
+
+class TaskUVLin (TaskBase):
+	_keywords = ['vis', 'select', 'chans', 'out', 'order', 'offset', 'mode', 'options']
+	_options  = ['sun', 'twofit', 'nowindow', 'lpropc', 'relax', 'nocal', 'nopass', 'nopol']
 '''
 
 class TaskUVFlag (TaskBase):
