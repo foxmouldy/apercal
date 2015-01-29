@@ -23,6 +23,13 @@ def wsrtfits(uvf):
 	os.system('wsrtfits in='+uvf+' op=uvin velocity=optbary out='+uvf.replace('.UVF', '.UV'));
 	return uvf.replace('.UVF','.UV');
 
+def infits(uvf):
+	fits = mirexec.TaskFits()
+	fits.in_ = uvf
+	fits.op = 'uvin'
+	fits.velocity = 'optbary'
+	fits.out = uvf.replace('.UVF','.UV')
+
 def uvflag(uv, flags='an(6),shadow(25),auto'):
 	uvflag = mirexecb.TaskUVFlag();
 	#flags = ('an(6)', 'shadow(25)', 'auto');
@@ -47,6 +54,7 @@ def attsys(uv):
 if __name__=="__main__":
 	for v in options.vis.split(','):
 		print v
-		w = wsrtfits(v);
+		#w = wsrtfits(v);
+		w = fits(v)
 		uvflag(w, options.flags);
 		attsys(w);

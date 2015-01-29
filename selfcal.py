@@ -23,85 +23,172 @@ class Bunch:
 	def __init__(self, **kwds): 
 		self.__dict__.update(kwds)
 
-def getimmax(imname):
+def getimmax(image):
 	imstat = mirexec.TaskImStat()
-	imstat.in_ = imname;
+	imstat.in_ = image;
 	imstats = imstat.snarf();
 	immax = float(imstats[0][10][51:61]);
 	imunits = imstats[0][4];
 	return immax, imunits
 
-def invertr(vis, select, mapname, beamname, robust=-2.0, line=''):
+def invertr(params):
 	invert = mirexec.TaskInvert()
-	invert.vis = vis;
-	invert.select = select;
-	invert.line = line;
-	os.system('rm -r '+mapname)
-	os.system('rm -r '+beamname)
-	invert.map = mapname
-	invert.beam = beamname
-	invert.options = 'double,mfs';
+	invert.vis = params.vis
+	invert.select = params.select
+	invert.line = params.line
+	os.system('rm -r '+params.map)
+	os.system('rm -r '+params.beam)
+	invert.map = params.map
+	invert.beam = params.beam
+	invert.options = params.iopts 
 	invert.slop = 0.5
 	invert.stokes = 'ii'
 	invert.imsize = 1500
 	invert.cell = 4
-	invert.robust= robust 
-	tout = invert.snarf();
+	invert.fwhm = params.fwhm
+	invert.robust= params.robust 
+	tout = invert.snarf()
 
-def clean(mapname, beamname, modelname, maskname=None, cutoff=0.0):
+def clean(params):
 	clean = mirexec.TaskClean()
-	clean.map = mapname;
-	clean.beam = beamname;
-	clean.cutoff = cutoff;
-	if maskname!=None:
-		clean.region='mask('+maskname+')';
+	clean.map = params.map
+	clean.beam = params.beam
+	clean.cutoff = params.cutoff
+	if params.mask!=None:
+		clean.region='mask('+params.mask+')'
 		clean.niters = 10000000
 	else:
 		clean.niters = 1000
-	os.system('rm -r '+modelname);
-	clean.out = modelname; 
+	os.system('rm -r '+params.model)
+	clean.out = params.model 
 	tout = clean.snarf()
 
-def restor(mapname, beamname, modelname, imname):
-	os.system('rm -r '+imname)
+def restor(params):	
+	os.system('rm -r '+params.image)
 	restor = mirexec.TaskRestore()
-	restor.beam = beamname;
-	restor.map = mapname
-	restor.model = modelname
-	restor.out = imname
+	restor.beam = params.beam
+	restor.map = params.map
+	restor.model = params.model
+	restor.out = params.image
 	tout = restor.snarf()
+	
+def maths(image, cutoff, mask):
+	os.system('rm -r '+mask)
+	maths = mirexec.TaskMaths()
+	maths.exp = image
+	maths.mask = image+'.gt.'+str(cutoff)
+	maths.out = mask
+	tout = maths.snarf()
 
-# Step 0, make an LSM and use this as the first step in Selfcal
+def selfcal(params):
+	selfcal = mirexec.TaskSelfCal()
+	selfcal.vis = params.vis 
+	selfcal.select = params.select
+	selfcal.model = params.model
+	selfcal.options = params.sopts
+	selfcal.interval = params.interval
+	selfcal.line = params.line
+	tout = selfcal.snarf()
 
-# Step 1, Make a dirty image
-# invert_bunch should be replaced by a settings file. 
+def wgains(params):
+	uvcat = mirexec.TaskUVCat()
+	uvcat.vis = params.vis
+	uvcat.out = '.temp'
+	tout = uvcat.snarf()
+	os.system('rm -r '+params.vis)
+	os.system('mv .temp '+params.vis)
+# params should be replaced by a settings file. 
 
 
-invert_bunch = Bunch(vis=options.vis, select='-uvrange(0,1)', 
-	mapname='map_temp', beamname='beam_temp', maskname = 'mask_temp', modelname='model_temp', imname = 'image_temp', 
-	robust='-2.0', line='')
 
-invertr(invert_bunch.vis, invert_bunch.select, invert_bunch.mapname, invert_bunch.beamname)
-immax, imunits = getimmax(invert_bunch.mapname)
-maths(imname, immax/3, maskname)
-clean(invert_bunch.mapname, invert_bunch.beamname, invert_bunch.model, invert_bunch.mask,
-	cutoff=immax/30)
-restor(invert_bunch.mapname, invert_bunch.beamname, invert_bunch.modelname, invert_bunch.imname)
+params = Bunch(vis=options.vis, select='-uvrange(0,1)', 
+	map='map_temp', beam='beam_temp', mask = 'mask_temp', model='model_temp', image = 'image_temp', 
+	robust='-2.0', lsm='lsm_temp', line='channel,60,2,1,1', sopts='mfs,phase',
+	iopts='mfs,double', interval=1, fwhm='12', cutoff=1e-2)
 
-immax, imunits = getimmax(invert_bunch.imname)
-maths(imname, immax/9, maskname)
-clean(invert_bunch.mapname, invert_bunch.beamname, invert_bunch.model, invert_bunch.mask,
-	cutoff=immax/90)
-restor(invert_bunch.mapname, invert_bunch.beamname, invert_bunch.modelname, invert_bunch.imname)
+# Calibration Using the LSM
+params.map=params.vis.replace('.uv','')+'_'+params.map
+params.beam=params.vis.replace('.uv','')+'_'+params.beam
+params.mask=params.vis.replace('.uv','')+'_'+params.mask
+params.model=params.vis.replace('.uv','')+'_'+params.model
+params.image=params.vis.replace('.uv','')+'_'+params.image
+params.lsm=params.vis.replace('.uv','')+'_'+params.lsm
 
-immax, imunits = getimmax(invert_bunch.imname)
-maths(imname, immax/27, maskname)
-clean(invert_bunch.mapname, invert_bunch.beamname, invert_bunch.model, invert_bunch.mask,
-	cutoff=immax/270)
-restor(invert_bunch.mapname, invert_bunch.beamname, invert_bunch.modelname, invert_bunch.imname)
+print "LSM Calibration"
+params.fwhm='45'
+params.robust='-1'
+invertr(params)
+c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
+os.system(c)
+print 'made lsm'
+params.model = params.lsm
+params.sopts='mfs,phase'
+params.interval='1'
+selfcal(params)
+wgains(params)
+params.fwhm='12'
+params.robust = '-1'
+params.sopts='mfs,phase'
+params.interval='1'
 
-immax, imunits = getimmax(invert_bunch.imname)
-maths(imname, immax/81, maskname)
-clean(invert_bunch.mapname, invert_bunch.beamname, invert_bunch.model, invert_bunch.mask,
-	cutoff=immax/810)
-restor(invert_bunch.mapname, invert_bunch.beamname, invert_bunch.modelname, invert_bunch.imname)
+# Selfcal 1
+print "Selfcal 1"
+params.model=params.vis.replace('.uv','')+'_model_temp'
+invertr(params)
+immax, imunits = getimmax(params.map)
+maths(params.map, immax/3, params.mask)
+params.cutoff = immax/10
+clean(params)
+restor(params)
+immax, imunits = getimmax(params.image)
+maths(params.image, immax/9, params.mask)
+params.cutoff=immax/100
+clean(params)
+restor(params)
+immax, imunits = getimmax(params.image)
+maths(params.image, immax/12, params.mask)
+params.cutoff=immax/100
+clean(params)
+restor(params)
+selfcal(params) 
+
+# Selfcal 2
+print "Selfcal 2"
+invertr(params)
+immax, imunits = getimmax(params.map)
+maths(params.map, immax/3, params.mask)
+params.cutoff=immax/10
+clean(params)
+restor(params)
+immax, imunits = getimmax(params.image)
+maths(params.image, immax/9, params.mask)
+params.cutoff=immax/100
+clean(params)
+immax, imunits = getimmax(params.image)
+maths(params.image, immax/12, params.mask)
+params.cutoff=immax/100
+clean(params)
+restor(params)
+selfcal(params) 
+
+# Selfcal 3
+print "Selfcal 3"
+invertr(params)
+immax, imunits = getimmax(params.map)
+maths(params.map, immax/3, params.mask)
+params.cutoff=immax/10
+clean(params)
+restor(params)
+immax, imunits = getimmax(params.image)
+maths(params.image, immax/9, params.mask)
+params.cutoff = immax/100
+clean(params)
+restor(params)
+immax, imunits = getimmax(params.image)
+maths(params.image, immax/12, params.mask)
+params.cutoff=immax/100
+clean(params)
+restor(params)
+selfcal(params)
+invertr(params)
+clean(params)
