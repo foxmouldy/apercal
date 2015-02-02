@@ -1,5 +1,4 @@
 import re
-import aplpy
 import mirexec
 from mirexec import *
 import sys 

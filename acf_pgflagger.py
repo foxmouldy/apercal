@@ -2,12 +2,9 @@ import sys
 import miriad
 import mirexec
 from apercal import mirexecb
-import aplpy
 import pylab as pl
-import numpy
-from apercal import calib
-from apercal import acim
 from apercal import acos
+import numpy
 import os
 from optparse import OptionParser 
 

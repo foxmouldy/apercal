@@ -1,5 +1,4 @@
 import re
-import aplpy
 import sys 
 import pylab as pl
 import os 

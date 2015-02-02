@@ -76,7 +76,7 @@ def maths(image, cutoff, mask):
 	os.system('rm -r '+mask)
 	maths = mirexec.TaskMaths()
 	maths.exp = image
-	maths.mask = image+'.gt.'+str(cutoff)
+	maths.mask = image+".gt."+str(cutoff)
 	maths.out = mask
 	tout = maths.snarf()
 
@@ -88,6 +88,8 @@ def selfcal(params):
 	selfcal.options = params.sopts
 	selfcal.interval = params.interval
 	selfcal.line = params.line
+	if params.clip!=None:
+		selfcal.clip = params.clip
 	tout = selfcal.snarf()
 
 def wgains(params):
@@ -104,7 +106,7 @@ def wgains(params):
 params = Bunch(vis=options.vis, select='-uvrange(0,1)', 
 	map='map_temp', beam='beam_temp', mask = 'mask_temp', model='model_temp', image = 'image_temp', 
 	robust='-2.0', lsm='lsm_temp', line='channel,60,2,1,1', sopts='mfs,phase',
-	iopts='mfs,double', interval=1, fwhm='12', cutoff=1e-2)
+	iopts='mfs,double', interval=5, fwhm='', cutoff=1e-2, clip=None)
 
 # Calibration Using the LSM
 params.map=params.vis.replace('.uv','')+'_'+params.map
@@ -114,81 +116,83 @@ params.model=params.vis.replace('.uv','')+'_'+params.model
 params.image=params.vis.replace('.uv','')+'_'+params.image
 params.lsm=params.vis.replace('.uv','')+'_'+params.lsm
 
-print "LSM Calibration"
-params.fwhm='45'
-params.robust='-1'
+#print "LSM Calibration"
+#params.fwhm='45'
+#params.robust='-1'
 invertr(params)
-c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
-os.system(c)
+#c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
+#os.system(c)
 print 'made lsm'
 params.model = params.lsm
 params.sopts='mfs,phase'
 params.interval='1'
 selfcal(params)
-wgains(params)
-params.fwhm='12'
-params.robust = '-1'
+#wgains(params)
+#params.fwhm='12'
+#params.robust = '-1'
 params.sopts='mfs,phase'
-params.interval='1'
+#params.interval='1'
 
 # Selfcal 1
-print "Selfcal 1"
-params.model=params.vis.replace('.uv','')+'_model_temp'
-invertr(params)
-immax, imunits = getimmax(params.map)
-maths(params.map, immax/3, params.mask)
-params.cutoff = immax/10
-clean(params)
-restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/9, params.mask)
-params.cutoff=immax/100
-clean(params)
-restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/12, params.mask)
-params.cutoff=immax/100
-clean(params)
-restor(params)
-selfcal(params) 
-
-# Selfcal 2
-print "Selfcal 2"
-invertr(params)
-immax, imunits = getimmax(params.map)
-maths(params.map, immax/3, params.mask)
-params.cutoff=immax/10
-clean(params)
-restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/9, params.mask)
-params.cutoff=immax/100
-clean(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/12, params.mask)
-params.cutoff=immax/100
-clean(params)
-restor(params)
-selfcal(params) 
-
-# Selfcal 3
-print "Selfcal 3"
-invertr(params)
-immax, imunits = getimmax(params.map)
-maths(params.map, immax/3, params.mask)
-params.cutoff=immax/10
-clean(params)
-restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/9, params.mask)
-params.cutoff = immax/100
-clean(params)
-restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/12, params.mask)
-params.cutoff=immax/100
-clean(params)
-restor(params)
-selfcal(params)
-invertr(params)
-clean(params)
+#print "Selfcal 1"
+#params.model=params.vis.replace('.uv','')+'_model_temp'
+#invertr(params)
+#immax, imunits = getimmax(params.map)
+#maths(params.map, immax/3, params.mask)
+#params.cutoff = immax/10
+#clean(params)
+#restor(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/9, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#restor(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/12, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#restor(params)
+#cmmax, cmunits = getimmax(params.model)
+#params.clip = cmmax/20
+#selfcal(params) 
+#
+## Selfcal 2
+#print "Selfcal 2"
+#invertr(params)
+#immax, imunits = getimmax(params.map)
+#maths(params.map, immax/3, params.mask)
+#params.cutoff=immax/10
+#clean(params)
+#restor(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/9, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/12, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#restor(params)
+#selfcal(params) 
+#
+## Selfcal 3
+#print "Selfcal 3"
+#invertr(params)
+#immax, imunits = getimmax(params.map)
+#maths(params.map, immax/3, params.mask)
+#params.cutoff=immax/10
+#clean(params)
+#restor(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/9, params.mask)
+#params.cutoff = immax/100
+#clean(params)
+#restor(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/12, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#restor(params)
+#selfcal(params)
+#invertr(params)
+#clean(params)

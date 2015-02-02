@@ -130,7 +130,10 @@ def mk_lsm(options):
 	L_asec = L*3600.
 	M_asec = M*3600.
 	pl.scatter(L_asec, M_asec, c=S*1000, s=S)
-	pl.savefig('srcs.pdf', dpi=300)
+	pl.xlabel('L offset (arcsec)')
+	pl.ylabel('M offset (arcsec)')
+	pl.colorbar()
+	pl.savefig(options.infile+'-nvss-lsm.pdf', dpi=300)
 	pl.close()
 	n = 20 
 	modfiles = ''
