@@ -25,13 +25,14 @@ def mfcal(v, refant):
 	mfcal.refant = refant;
 	mfcal.interval = 100000;
  	o = mfcal.snarf();
+	print mfcal.commandLine()
 	print o; 
 
 def gpcopy(v):
 	gpcopy = mirexecb.TaskGPCopy();
 	for i in range(len(v)-1):
-		gpcopy.vis = v[i];
-		gpcopy.out = v[0];
+		gpcopy.vis = v[0];
+		gpcopy.out = v[i];
 		gpcopy.options = 'nopass';
 		gpcopy.merge = 'nopass';
 		o = gpcopy.snarf();

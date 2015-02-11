@@ -12,15 +12,15 @@ for file in `ls -d *.MS`
 export msfiles=`echo $msfiles | sed s/^,//g`
 
 # Calibrators
-export tag='ACF4G4'
-export cals='11400797_S0_T0.UV,11400798_S0_T0.UV,11400800_S0_T0.UV,11400801_S0_T0.UV'
-export cal1='11400797_S0_T0.UV'
+export tag='ACF2G2'
+export cals='11400690_S0_T0.UV,11400691_S0_T0.UV,11400693_S0_T0.UV,11400694_S0_T0.UV'
+export cal1='11400690_S0_T0.UV'
 
 # Sources
-export srctag='11400799_S0_*.UVF'
-export sourcefilenames='ACF4G4P1.UV,ACF4G4P2.UV,ACF4G4P3.UV,ACF4G4P4.UV'
+export srctag='11400692_S0_*.UVF'
+export sourcefilenames='ACF2G2P1.UV,ACF2G2P2.UV,ACF2G2P3.UV,ACF2G2P4.UV'
 export sourcenames=`echo $sourcefilenames | sed s/.UV//g`
-export lm='ACF4G4*.IM,ACF4G4.IM'
+export lm='ACF2G2*.IM,ACF2G2.IM'
 
 # First put uvfs=*.UVF, 
 export file=''
