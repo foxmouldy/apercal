@@ -48,6 +48,7 @@ def invertr(params):
 	invert.fwhm = params.fwhm
 	invert.robust= params.robust 
 	tout = invert.snarf()
+	return tout
 
 def clean(params):
 	clean = mirexec.TaskClean()
@@ -119,7 +120,8 @@ params.lsm=params.vis.replace('.uv','')+'_'+params.lsm
 #print "LSM Calibration"
 #params.fwhm='45'
 #params.robust='-1'
-invertr(params)
+tout = invertr(params)
+print tout
 c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
 os.system(c)
 print 'made lsm'
