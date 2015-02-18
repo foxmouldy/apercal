@@ -1,4 +1,5 @@
 import mirexec
+import pylab as pl
 from optparse import OptionParser
 import sys
 import os
@@ -13,13 +14,16 @@ parser.add_option("--settings", "-s", type = 'string', dest='settings', default=
 	help = 'Settings file to be used [None]')
 parser.add_option('--lsm', '-l', action='store_true', dest='lsm', default=False,
 	help = "Use LSM for calibration")
-
+parser.add_option('--nloops', '-n', type='int', dest='n', default=1, 
+	help = 'Number of Selfcal Loops [1]')
 (options, args) = parser.parse_args();
 
 if __name__=="__main__":
 	if len(sys.argv)==1: 
 		parser.print_help();
 		dummy = sys.exit(0);
+
+options.n = int(options.n)
 
 class Bunch: 
 	def __init__(self, **kwds): 
@@ -94,6 +98,7 @@ def selfcal(params):
 	if params.clip!=None:
 		selfcal.clip = params.clip
 	tout = selfcal.snarf()
+	return tout
 
 def wgains(params):
 	uvcat = mirexec.TaskUVCat()
@@ -120,23 +125,41 @@ def get_cutoff(rms=1e-3, fac=2., imax=1e-2, invout=None):
 	else:
 		return noise
 
-params = Bunch(vis=options.vis, select='-uvrange(0,1)', 
-	map='map_temp', beam='beam_temp', mask = 'mask_temp', model='model_temp', image = 'image_temp', 
-	robust='-2.0', lsm='lsm_temp', line='channel,54,5,1,1', sopts='mfs,phase',
-	iopts='mfs,double', interval=5, fwhm='', cutoff=1e-2, clip=None)
+def selfcal_cycle(j=1):
+	c1 = pl.arange(3.,12.,3.)*(j)
+	c2 = pl.arange(4.,16.,4.)*j
+	params.model = params.vis.replace('.uv','')+'_model_temp'
+	invout = invertr(params)
+	immax, imunits = getimmax(params.map)
+	maths(params.map, immax/c1[0], params.mask)
+	params.cutoff = get_cutoff(invout = invout, fac=c2[0])
+	clean(params)
+	restor(params)
+	immax, imunits = getimmax(params.image)
+	maths(params.image, immax/c1[1], params.mask)
+	params.cutoff = get_cutoff(invout = invout, fac=c2[1])
+	clean(params)
+	restor(params)
+	immax, imunits = getimmax(params.image)
+	maths(params.image, immax/c1[2], params.mask)
+	params.cutoff = get_cutoff(invout = invout, fac=c2[2])
+	clean(params)
+	restor(params)
+	cmmax, cmunits = getimmax(params.model)
+	params.clip = cmmax/20
+	tout = selfcal(params) 
+	print 'Selfcal Output:'
+	print tout[0]
+	params.image = params.image+'.asc'
+	params.model = params.model+'.asc'
+	clean(params)
+	restor(params)
+	params.image = params.image.replace('.asc','')
+	params.model = params.model.replace('.asc','')
 
-# Calibration Using the LSM
-params.map=params.vis.replace('.uv','')+'_'+params.map
-params.beam=params.vis.replace('.uv','')+'_'+params.beam
-params.mask=params.vis.replace('.uv','')+'_'+params.mask
-params.model=params.vis.replace('.uv','')+'_'+params.model
-params.image=params.vis.replace('.uv','')+'_'+params.image
-params.lsm=params.vis.replace('.uv','')+'_'+params.lsm
 
-#print "LSM Calibration"
 
-if options.lsm!=False:
-	tout = invertr(params)
+def lsm():
 	c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
 	os.system(c)
 	print 'made lsm'
@@ -147,18 +170,53 @@ if options.lsm!=False:
 	#wgains(params)
 	params.sopts='mfs,phase'
 
+global params
+	
+
+params = Bunch(vis=options.vis, select='-uvrange(0,1)', 
+	map='map_temp', beam='beam_temp', mask = 'mask_temp', model='model_temp', image = 'image_temp', 
+	robust='-2.0', lsm='lsm_temp', line='channel,54,5,1,1', sopts='mfs,phase',
+	iopts='mfs,double', interval=5, fwhm='', cutoff=1e-2, clip=None)
+
+# Setup the parameters 
+params.map=params.vis.replace('.uv','')+'_'+params.map
+params.beam=params.vis.replace('.uv','')+'_'+params.beam
+params.mask=params.vis.replace('.uv','')+'_'+params.mask
+params.model=params.vis.replace('.uv','')+'_'+params.model
+params.image=params.vis.replace('.uv','')+'_'+params.image
+params.lsm=params.vis.replace('.uv','')+'_'+params.lsm
+
+# It all starts with an invert
+tout = invertr(params)
+
+if options.lsm!=False:
+	lsm()
+	#tout = invertr(params)
+	#c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
+	#os.system(c)
+	#print 'made lsm'
+	#params.model = params.lsm
+	#params.sopts='mfs,phase'
+	#params.interval='5'
+	##selfcal(params)
+	##wgains(params)
+	#params.sopts='mfs,phase'
+
 # Selfcal 1
-print "Selfcal 1"
 params.model=params.vis.replace('.uv','')+'_model_temp'
-params.interval='2'
-invout = invertr(params)
-immax, imunits = getimmax(params.map)
-maths(params.map, immax/3, params.mask)
-#params.cutoff = immax/10
-params.cutoff = get_cutoff(invout = invout, fac=3)
-print 'Params Cutoff = ', params.cutoff
-clean(params)
-restor(params)
+for i in range(0, options.n):
+	print 'Selfcal Cycle '+str(i+1)
+	params.interval='2'
+	selfcal_cycle(j=i+1)
+
+#invout = invertr(params)
+#immax, imunits = getimmax(params.map)
+#maths(params.map, immax/3, params.mask)
+##params.cutoff = immax/10
+#params.cutoff = get_cutoff(invout = invout, fac=3)
+#print 'Params Cutoff = ', params.cutoff
+#clean(params)
+#restor(params)
 #immax, imunits = getimmax(params.image)
 #maths(params.image, immax/9, params.mask)
 #params.cutoff=immax/100
@@ -172,7 +230,7 @@ restor(params)
 #cmmax, cmunits = getimmax(params.model)
 #params.clip = cmmax/20
 #selfcal(params) 
-#
+
 ## Selfcal 2
 #print "Selfcal 2"
 #params.interval='1'
