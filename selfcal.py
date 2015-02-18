@@ -11,6 +11,8 @@ parser.add_option("--vis", "-v", type = 'string', dest = 'vis', default=None,
 	help = "Vis to be selfcal'd [None]");
 parser.add_option("--settings", "-s", type = 'string', dest='settings', default=None, 
 	help = 'Settings file to be used [None]')
+parser.add_option('--lsm', '-l', action='store_true', dest='lsm', default=False,
+	help = "Use LSM for calibration")
 
 (options, args) = parser.parse_args();
 
@@ -102,7 +104,21 @@ def wgains(params):
 	os.system('mv .temp '+params.vis)
 # params should be replaced by a settings file. 
 
-
+def get_cutoff(rms=1e-3, fac=2., imax=1e-2, invout=None):
+	'''
+	Simple function to calculate the cutoff
+	'''
+	# invout is the text array from invert.
+	if invout!=None:
+		rmstr = [s for s in invout[0] if 'Theoretical rms noise:' in s]
+		noise = 3.*float(str(rmstr[0]).split(':')[1])
+		#rms = 3*float(rmstr[23:])
+	else:
+		noise = 3.*float(rms)
+	if imax/fac > noise:
+		return imax/fac
+	else:
+		return noise
 
 params = Bunch(vis=options.vis, select='-uvrange(0,1)', 
 	map='map_temp', beam='beam_temp', mask = 'mask_temp', model='model_temp', image = 'image_temp', 
@@ -118,89 +134,88 @@ params.image=params.vis.replace('.uv','')+'_'+params.image
 params.lsm=params.vis.replace('.uv','')+'_'+params.lsm
 
 #print "LSM Calibration"
-#params.fwhm='45'
-#params.robust='-1'
-tout = invertr(params)
-print tout
-c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
-os.system(c)
-print 'made lsm'
-params.model = params.lsm
-params.sopts='mfs,phase'
-params.interval='5'
-selfcal(params)
-#wgains(params)
-#params.fwhm='12'
-#params.robust = '-1'
-params.sopts='mfs,phase'
+
+if options.lsm!=False:
+	tout = invertr(params)
+	c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
+	os.system(c)
+	print 'made lsm'
+	params.model = params.lsm
+	params.sopts='mfs,phase'
+	params.interval='5'
+	#selfcal(params)
+	#wgains(params)
+	params.sopts='mfs,phase'
 
 # Selfcal 1
 print "Selfcal 1"
 params.model=params.vis.replace('.uv','')+'_model_temp'
 params.interval='2'
-invertr(params)
+invout = invertr(params)
 immax, imunits = getimmax(params.map)
 maths(params.map, immax/3, params.mask)
-params.cutoff = immax/10
+#params.cutoff = immax/10
+params.cutoff = get_cutoff(invout = invout, fac=3)
+print 'Params Cutoff = ', params.cutoff
 clean(params)
 restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/9, params.mask)
-params.cutoff=immax/100
-clean(params)
-restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/12, params.mask)
-params.cutoff=immax/100
-clean(params)
-restor(params)
-cmmax, cmunits = getimmax(params.model)
-params.clip = cmmax/20
-selfcal(params) 
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/9, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#restor(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/12, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#restor(params)
+#cmmax, cmunits = getimmax(params.model)
+#params.clip = cmmax/20
+#selfcal(params) 
 #
 ## Selfcal 2
-print "Selfcal 2"
-params.interval='1'
-invertr(params)
-immax, imunits = getimmax(params.map)
-maths(params.map, immax/3, params.mask)
-params.cutoff=immax/10
-clean(params)
-restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/9, params.mask)
-params.cutoff=immax/100
-clean(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/12, params.mask)
-params.cutoff=immax/100
-clean(params)
-restor(params)
-cmmax, cmunits = getimmax(params.model)
-params.clip = cmmax/40
-selfcal(params) 
-#
-## Selfcal 3
-print "Selfcal 3"
-params.interval='0.5'
-invertr(params)
-immax, imunits = getimmax(params.map)
-maths(params.map, immax/3, params.mask)
-params.cutoff=immax/10
-clean(params)
-restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/9, params.mask)
-params.cutoff = immax/100
-clean(params)
-restor(params)
-immax, imunits = getimmax(params.image)
-maths(params.image, immax/12, params.mask)
-params.cutoff=immax/100
-clean(params)
-restor(params)
-cmmax, cmunits = getimmax(params.model)
-params.clip = cmmax/40
-selfcal(params)
-invertr(params)
-clean(params)
+#print "Selfcal 2"
+#params.interval='1'
+#invertr(params)
+#immax, imunits = getimmax(params.map)
+#maths(params.map, immax/3, params.mask)
+#params.cutoff=immax/10
+#clean(params)
+#restor(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/9, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/12, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#restor(params)
+#cmmax, cmunits = getimmax(params.model)
+#params.clip = cmmax/40
+#selfcal(params) 
+##
+### Selfcal 3
+#print "Selfcal 3"
+#params.interval='0.5'
+#invertr(params)
+#immax, imunits = getimmax(params.map)
+#maths(params.map, immax/3, params.mask)
+#params.cutoff=immax/10
+#clean(params)
+#restor(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/9, params.mask)
+#params.cutoff = immax/100
+#clean(params)
+#restor(params)
+#immax, imunits = getimmax(params.image)
+#maths(params.image, immax/12, params.mask)
+#params.cutoff=immax/100
+#clean(params)
+#restor(params)
+#cmmax, cmunits = getimmax(params.model)
+#params.clip = cmmax/40
+#selfcal(params)
+#invertr(params)
+#clean(params)
