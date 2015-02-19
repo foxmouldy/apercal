@@ -4,6 +4,19 @@ from optparse import OptionParser
 import sys
 import os
 from ConfigParser import SafeConfigParser
+import imp
+import logging
+#logging.basicConfig(level=logging.INFO)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
+#Check if PyBDSM is installed
+try:
+	imp.find_module('lofar')
+	isbdsm = True
+	from lofar import bdsm
+except ImportError:
+	isbdsm = False
+
 
 usage = "usage: %prog options"
 parser = OptionParser(usage=usage);
@@ -13,9 +26,16 @@ parser.add_option("--vis", "-v", type = 'string', dest = 'vis', default=None,
 parser.add_option("--settings", "-s", type = 'string', dest='settings', default=None, 
 	help = 'Settings file to be used [None]')
 parser.add_option('--lsm', '-l', action='store_true', dest='lsm', default=False,
-	help = "Use LSM for calibration")
-parser.add_option('--nloops', '-n', type='int', dest='n', default=1, 
-	help = 'Number of Selfcal Loops [1]')
+	help = "Use LSM for calibration [False]")
+parser.add_option('--nloops', '-n', type='int', dest='n', default=0, 
+	help = 'Number of Selfcal Loops [0]')
+parser.add_option('--bdsm', '-b', action='store_true', dest='bdsm', default=False, 
+	help = 'Use PyBDSM to create Gaussian LSM0 [False]')
+parser.add_option('--mkim0', '-m', action='store_true', dest='mkim0', default=False, 
+	help = 'MFS-Image the VIS and exit [False].')
+parser.add_option('--par', '-p', type='string', dest='par', default=None, 
+	help = 'Overwrite a single parameter: --par <par>,value')
+
 (options, args) = parser.parse_args();
 
 if __name__=="__main__":
@@ -70,13 +90,19 @@ def clean(params):
 	clean.out = params.model 
 	tout = clean.snarf()
 
-def restor(params):	
-	os.system('rm -r '+params.image)
+def restor(params, mode='clean'):	
 	restor = mirexec.TaskRestore()
 	restor.beam = params.beam
 	restor.map = params.map
 	restor.model = params.model
-	restor.out = params.image
+	if mode!='clean':
+		restor.out = params.residual
+		restor.mode = 'residual'
+	else:
+		restor.out = params.image
+		restor.mode = 'clean'
+
+	os.system('rm -r '+restor.out)
 	tout = restor.snarf()
 	
 def maths(image, cutoff, mask):
@@ -107,7 +133,6 @@ def wgains(params):
 	tout = uvcat.snarf()
 	os.system('rm -r '+params.vis)
 	os.system('mv .temp '+params.vis)
-# params should be replaced by a settings file. 
 
 def get_cutoff(rms=1e-3, fac=2., imax=1e-2, invout=None):
 	'''
@@ -117,18 +142,17 @@ def get_cutoff(rms=1e-3, fac=2., imax=1e-2, invout=None):
 	if invout!=None:
 		rmstr = [s for s in invout[0] if 'Theoretical rms noise:' in s]
 		noise = 3.*float(str(rmstr[0]).split(':')[1])
-		#rms = 3*float(rmstr[23:])
 	else:
-		noise = 3.*float(rms)
+		noise = 5.*float(rms)
 	if imax/fac > noise:
 		return imax/fac
 	else:
 		return noise
 
-def selfcal_cycle(j=1):
-	c1 = pl.arange(3.,12.,3.)*(j)
-	c2 = pl.arange(4.,16.,4.)*j
-	params.model = params.vis.replace('.uv','')+'_model_temp'
+#def selfcal_cycle(j=1):
+def image_cycle(j=1):
+	c1 = pl.linspace(2.,6.,3.)*j
+	c2 = pl.linspace(3.,9.,3.)*j
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/c1[0], params.mask)
@@ -146,134 +170,122 @@ def selfcal_cycle(j=1):
 	clean(params)
 	restor(params)
 	cmmax, cmunits = getimmax(params.model)
-	params.clip = cmmax/20
-	tout = selfcal(params) 
-	print 'Selfcal Output:'
-	print tout[0]
-	params.image = params.image+'.asc'
-	params.model = params.model+'.asc'
-	clean(params)
-	restor(params)
-	params.image = params.image.replace('.asc','')
-	params.model = params.model.replace('.asc','')
+	params.clip = cmmax/(20.*j)
+	# Selfcal
+	#tout = selfcal(params) 
+	#print 'Selfcal Output:'
+	#print ("\n".join(map(str, tout[0])))
 
+
+
+def bdsm():
+	# Export the Image as Fits
+	fits = mirexec.TaskFits()
+	fits.in_ = params.image
+	fits.op = 'xyout'
+	fits.out = params.image+'.fits'
+	fits.snarf()
+
+	# Run PyBDSM on the Image
+	img = bdsm.process_image(params.image+'.fits')
+	img.export_image(outfile = params.image+'gaus_model.fits', im_type='gaus_model')
+	img.write_catalog(outfile = params.image+'gaus_model.txt')
+	
+	# Use the Gaussian Image File as a Model
+	fits.in_ = params.image+'gaus_model.fits'
+	fits.op = 'xyin'
+	fits.out = params.lsm
+	fits.snarf()
+	params.model = params.lsm
+	print params
+	sys.exit(0)
+	tout = selfcal(params)
+	print 'Selfcal Output Using PyBDSM:'
+	print ("\n".join(map(str, tout[0])))
 
 
 def lsm():
 	c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
 	os.system(c)
-	print 'made lsm'
+	print 'Made LSM'
 	params.model = params.lsm
 	params.sopts='mfs,phase'
 	params.interval='5'
-	#selfcal(params)
-	#wgains(params)
-	params.sopts='mfs,phase'
+	tout = selfcal(params) 
+	print 'Selfcal Output Using LSM:'
+	logging.info("\n".join(map(str, tout[0])))
+
 
 global params
 	
+def iteri(i):
+	params.map = params.tag+'_map'+str(i)
+	params.beam = params.tag+'_beam'+str(i)
+	params.mask = params.tag+'_mask'+str(i)
+	params.model = params.tag+'_model'+str(i)
+	params.image = params.tag+'_image'+str(i)
+	params.lsm = params.tag+'_lsm'+str(i)
+	params.residual = params.tag+'_residual'+str(i)
 
-params = Bunch(vis=options.vis, select='-uvrange(0,1)', 
-	map='map_temp', beam='beam_temp', mask = 'mask_temp', model='model_temp', image = 'image_temp', 
-	robust='-2.0', lsm='lsm_temp', line='channel,54,5,1,1', sopts='mfs,phase',
-	iopts='mfs,double', interval=5, fwhm='', cutoff=1e-2, clip=None)
 
 # Setup the parameters 
-params.map=params.vis.replace('.uv','')+'_'+params.map
-params.beam=params.vis.replace('.uv','')+'_'+params.beam
-params.mask=params.vis.replace('.uv','')+'_'+params.mask
-params.model=params.vis.replace('.uv','')+'_'+params.model
-params.image=params.vis.replace('.uv','')+'_'+params.image
-params.lsm=params.vis.replace('.uv','')+'_'+params.lsm
+params = Bunch(vis=options.vis, select='-uvrange(0,1)', tag = 'sc', map='map_temp', beam='beam_temp', 
+	mask = 'mask_temp', model='model_temp', image = 'image_temp', residual = 'residual_temp', robust='-2.0',
+	lsm='lsm_temp', line='channel,900,1,1,1', sopts='mfs,phase', iopts='mfs,double', interval=5,
+	fwhm='', cutoff=1e-2, clip=None)
 
-# It all starts with an invert
-tout = invertr(params)
+if options.par!=None:
+	par = options.par.split(',')
+	setattr(params, par[0], par[1])
+	print getattr(params, par[0])
+
+# Make the initial image.
+#print "Making Initial Image"
+
+def mkim0():
+	'''
+	Makes the 0th image.
+	'''
+	logging.info('Making Initial Image')
+	invout = invertr(params)
+	immax, imunits = getimmax(params.map)
+	maths(params.map, immax/3, params.mask)
+	params.cutoff = get_cutoff(invout = invout, fac=4)
+	clean(params)
+	restor(params)
+
+if options.mkim0!=False:
+	iteri(i=0)
+	mkim0()
+	sys.exit(0)
+else:
+	iteri(i=0)
+	mkim0()
+
+if options.bdsm!=False:
+	params.lsm = params.tag+'_bdsm'
+	print 'Using PyBDSM to make LSM'
+	bdsm()
 
 if options.lsm!=False:
+	params.lsm = params.tag+'_lsm'
+	params.model = params.lsm
+	print 'Making LSM'
 	lsm()
-	#tout = invertr(params)
-	#c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
-	#os.system(c)
-	#print 'made lsm'
-	#params.model = params.lsm
-	#params.sopts='mfs,phase'
-	#params.interval='5'
-	##selfcal(params)
-	##wgains(params)
-	#params.sopts='mfs,phase'
 
-# Selfcal 1
-params.model=params.vis.replace('.uv','')+'_model_temp'
-for i in range(0, options.n):
-	print 'Selfcal Cycle '+str(i+1)
-	params.interval='2'
-	selfcal_cycle(j=i+1)
+if options.n!=0:
+	for i in range(0, options.n):
+		logging.info('Selfcal Cycle '+str(i+1))
+		params.interval=str(2./(i+1))
+		iteri(i+1)
+		image_cycle(j=i+1)
+		tout = selfcal(params) 
+		print 'Selfcal Output:'
+		print ("\n".join(map(str, tout[0])))
 
-#invout = invertr(params)
-#immax, imunits = getimmax(params.map)
-#maths(params.map, immax/3, params.mask)
-##params.cutoff = immax/10
-#params.cutoff = get_cutoff(invout = invout, fac=3)
-#print 'Params Cutoff = ', params.cutoff
-#clean(params)
-#restor(params)
-#immax, imunits = getimmax(params.image)
-#maths(params.image, immax/9, params.mask)
-#params.cutoff=immax/100
-#clean(params)
-#restor(params)
-#immax, imunits = getimmax(params.image)
-#maths(params.image, immax/12, params.mask)
-#params.cutoff=immax/100
-#clean(params)
-#restor(params)
-#cmmax, cmunits = getimmax(params.model)
-#params.clip = cmmax/20
-#selfcal(params) 
 
-## Selfcal 2
-#print "Selfcal 2"
-#params.interval='1'
-#invertr(params)
-#immax, imunits = getimmax(params.map)
-#maths(params.map, immax/3, params.mask)
-#params.cutoff=immax/10
-#clean(params)
-#restor(params)
-#immax, imunits = getimmax(params.image)
-#maths(params.image, immax/9, params.mask)
-#params.cutoff=immax/100
-#clean(params)
-#immax, imunits = getimmax(params.image)
-#maths(params.image, immax/12, params.mask)
-#params.cutoff=immax/100
-#clean(params)
-#restor(params)
-#cmmax, cmunits = getimmax(params.model)
-#params.clip = cmmax/40
-#selfcal(params) 
-##
-### Selfcal 3
-#print "Selfcal 3"
-#params.interval='0.5'
-#invertr(params)
-#immax, imunits = getimmax(params.map)
-#maths(params.map, immax/3, params.mask)
-#params.cutoff=immax/10
-#clean(params)
-#restor(params)
-#immax, imunits = getimmax(params.image)
-#maths(params.image, immax/9, params.mask)
-#params.cutoff = immax/100
-#clean(params)
-#restor(params)
-#immax, imunits = getimmax(params.image)
-#maths(params.image, immax/12, params.mask)
-#params.cutoff=immax/100
-#clean(params)
-#restor(params)
-#cmmax, cmunits = getimmax(params.model)
-#params.clip = cmmax/40
-#selfcal(params)
-#invertr(params)
-#clean(params)
+	# Make the final image after selfcal
+	otag = params.tag
+	params.tag = 'asc'
+	iteri(i=100)
+	image_cycle(j=i+1)	
