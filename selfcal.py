@@ -5,8 +5,6 @@ import sys
 import os
 from ConfigParser import SafeConfigParser
 import imp
-import logging
-#logging.basicConfig(level=logging.INFO)
 
 #Check if PyBDSM is installed
 try:
@@ -218,7 +216,7 @@ def lsm():
 	params.interval='5'
 	tout = selfcal(params) 
 	print 'Selfcal Output Using LSM:'
-	logging.info("\n".join(map(str, tout[0])))
+	print ("\n".join(map(str, tout[0])))
 
 
 global params
@@ -244,16 +242,14 @@ if options.par!=None:
 	for par in pars:
 		p = par.split(':')	
 		setattr(params, p[0], p[1])
-		#print getattr(params, p[0])
 
 # Make the initial image.
-#print "Making Initial Image"
 
 def mkim0():
 	'''
 	Makes the 0th image.
 	'''
-	logging.info('Making Initial Image')
+	print "Making Initial Image"
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/3, params.mask)
@@ -280,17 +276,16 @@ if options.lsm!=False:
 	print 'Making LSM'
 	lsm()
 
-logging.basicConfig(format='%(levelname)s:%(message)s', filename=params.tag'.log', level=logging.DEBUG)
 R = [] # Ratio of actual to theoretical noise
 
 if options.n!=0:
 	for i in range(0, options.n):
-		logging.info('Selfcal Cycle '+str(i+1))
+		print 'Selfcal Cycle '+str(i+1)
 		iteri(i+1)
 		image_cycle(j=i+1)
 		tout = selfcal(params) 
-		logging.info('Selfcal Output: '+str(i+1))
-		logging.info("\n".join(map(str, tout[0])))
+		'Selfcal Output: '+str(i+1)
+		print ("\n".join(map(str, tout[0])))
 		ratstr = [s for s in tout[0] if 'Ratio of Actual to Theoretical noise:' in s]
 		R.append(float(str(ratstr[0]).split(':')[1]))
 
