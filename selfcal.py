@@ -7,7 +7,6 @@ from ConfigParser import SafeConfigParser
 import imp
 import logging
 #logging.basicConfig(level=logging.INFO)
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 #Check if PyBDSM is installed
 try:
@@ -34,7 +33,7 @@ parser.add_option('--bdsm', '-b', action='store_true', dest='bdsm', default=Fals
 parser.add_option('--mkim0', '-m', action='store_true', dest='mkim0', default=False, 
 	help = 'MFS-Image the VIS and exit [False].')
 parser.add_option('--par', '-p', type='string', dest='par', default=None, 
-	help = 'Overwrite a single parameter: --par <par>,value')
+	help = 'Overwrite a single parameter: --par <par>:<value>;<par2>:<value2>')
 
 (options, args) = parser.parse_args();
 
@@ -151,8 +150,9 @@ def get_cutoff(rms=1e-3, fac=2., imax=1e-2, invout=None):
 
 #def selfcal_cycle(j=1):
 def image_cycle(j=1):
-	c1 = pl.linspace(2.,6.,3.)*j
-	c2 = pl.linspace(3.,9.,3.)*j
+	c1 = pl.linspace(3.,9.,3.)*(j*4.)
+	c2 = c1/10.
+	#c2 = pl.linspace(3.,9.,3.)*j
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/c1[0], params.mask)
@@ -170,7 +170,8 @@ def image_cycle(j=1):
 	clean(params)
 	restor(params)
 	cmmax, cmunits = getimmax(params.model)
-	params.clip = cmmax/(20.*j)
+	params.clip = cmmax/(100.*j)
+	restor(params, mode='residual')
 	# Selfcal
 	#tout = selfcal(params) 
 	#print 'Selfcal Output:'
@@ -179,6 +180,10 @@ def image_cycle(j=1):
 
 
 def bdsm():
+	'''
+	This runs PyBDSM on the image to make a mask from the Gaussian output from the source
+	finder. 
+	'''
 	# Export the Image as Fits
 	fits = mirexec.TaskFits()
 	fits.in_ = params.image
@@ -235,9 +240,11 @@ params = Bunch(vis=options.vis, select='-uvrange(0,1)', tag = 'sc', map='map_tem
 	fwhm='', cutoff=1e-2, clip=None)
 
 if options.par!=None:
-	par = options.par.split(',')
-	setattr(params, par[0], par[1])
-	print getattr(params, par[0])
+	pars = options.par.split(';')
+	for par in pars:
+		p = par.split(':')	
+		setattr(params, p[0], p[1])
+		#print getattr(params, p[0])
 
 # Make the initial image.
 #print "Making Initial Image"
@@ -273,19 +280,28 @@ if options.lsm!=False:
 	print 'Making LSM'
 	lsm()
 
+logging.basicConfig(format='%(levelname)s:%(message)s', filename=params.tag'.log', level=logging.DEBUG)
+R = [] # Ratio of actual to theoretical noise
+
 if options.n!=0:
 	for i in range(0, options.n):
 		logging.info('Selfcal Cycle '+str(i+1))
-		params.interval=str(2./(i+1))
 		iteri(i+1)
 		image_cycle(j=i+1)
 		tout = selfcal(params) 
-		print 'Selfcal Output:'
-		print ("\n".join(map(str, tout[0])))
+		logging.info('Selfcal Output: '+str(i+1))
+		logging.info("\n".join(map(str, tout[0])))
+		ratstr = [s for s in tout[0] if 'Ratio of Actual to Theoretical noise:' in s]
+		R.append(float(str(ratstr[0]).split(':')[1]))
 
-
+	R = pl.array(R)
+	pl.plot(R, 'k-', lw=2)
+	pl.xlabel("Run #")
+	pl.ylabel("Ratio of Actual to Theoretical Noise")
+	pl.savefig(params.tag+'.scratio.pdf', dpi=300)
+	pl.close()
 	# Make the final image after selfcal
 	otag = params.tag
-	params.tag = 'asc'
-	iteri(i=100)
+	params.tag+='_asc'
+	iteri(i='')
 	image_cycle(j=i+1)	
