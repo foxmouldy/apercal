@@ -1,0 +1,19 @@
+[crosscal]
+msfiles = file1.ms,file2.ms,file3.ms,file4.ms
+cals = 3C147,CTD93
+srcs = NGC4278
+flags = an(6),shadow(25),auto
+refant = 2
+flagpar = 5,4,4,4,5,3
+select = ''
+
+[selfcal]
+vis = src.uv_chan0
+interval = 1
+select = -uvrange(0,0.2)
+nloops = 5
+robust = -2.0
+line = channel,900,1,1,1
+sopts = mfs,phase
+iopts= = mfs,double
+cutoff = 1e-2
