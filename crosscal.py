@@ -1,4 +1,6 @@
-import mirexec
+#import mirexec
+from apercal import acos
+from apercal import mirexecb as mirexec
 from ConfigParser import SafeConfigParser
 from optparse import OptionParser 
 import sys
@@ -6,6 +8,7 @@ import os
 
 global options
 global args
+global params
 
 usage = "usage: %prog options"
 parser = OptionParser(usage=usage);
@@ -23,58 +26,65 @@ if len(sys.argv)==1:
 	dummy = sys.exit(0);
 
 def ms2uvfits(msfiles):
-	for m in msfiles:
+	for m in msfiles.split(','):
+		print m
 		inms = m
 		outuvf = m.upper().replace(".MS",".UVF")
-		os.sytem("ms2uvfits ms="+inms+" fitsfile="+outuvf+" writesyscal=T multisource=T combinespw=T")
+		cmd = "ms2uvfits ms="+inms+" fitsfile="+outuvf+" writesyscal=T multisource=T combinespw=T"
+		print cmd
+		os.system(cmd)
+	
+def infits(uvf):
+	# Import the fits file
+	cmd = 'wsrtfits in='+uvf+' op=uvin velocity=optbary out='+uvf.replace('.UVF', '.UV')
+	print cmd
+	os.system(cmd);
 
-def wsrtfits(uvf):
-	os.system('wsrtfits in='+uvf+' op=uvin velocity=optbary out='+uvf.replace('.UVF', '.UV'));
-	return uvf.replace('.UVF','.UV');
-
-def uvflag(uv, flags='an(6),shadow(25),auto'):
-	uvflag = mirexecb.TaskUVFlag();
-	for f in flags.split(','):
-		uvflag.vis = uv; 
-		uvflag.select=f;
+	# UVFLAG the Static Flags
+	uv = uvf.replace('.UVF','.UV')
+	uvflag = mirexec.TaskUVFlag()
+	for f in params.flags.split(','):
+		uvflag.vis = uv 
+		uvflag.select=f
 		uvflag.flagval='flag'
-		o = uvflag.snarf();
-		print o;
-	
-def attsys(uv):
+		print uvflag.__dict__
+		o = uvflag.snarf()
+
+	# Tsys Calibration
 	os.system("attsys vis="+uv+" out=temp")
-	os.system('rm -r '+uv);
+	os.system('rm -r '+uv)
 	os.system('mv temp '+uv);
-	os.system('rm -r temp');
+	os.system('rm -r temp')
 
-def pgflag(params):
+def pgflag(vis, flagpar):
 	if params.log==None:
-		# This default naming convention is a little clumsy, but at
-		# least its clear what's happening here. 
-		params.log = params.vis+'.pgflaglog.txt';
-	pgflag = mirexecb.TaskPGFlag();
-	pgflag.vis = params.vis;
-	pgflag.select = params.select;
-	pgflag.stokes = 'qq' 
-	pgflag.flagpar = params.flagpar;
+		params.log = vis+'.pgflag.txt' 
+	pgflag = mirexec.TaskPGFlag()
+	pgflag.vis = vis
+	#if params.select!='':
+	#	pgflag.select = params.select
+	#	print 'blank'
+	pgflag.stokes = params.stokes
+	pgflag.flagpar = flagpar
 	pgflag.options = 'nodisp'
-	
-	# This specifies the SumThresholding command.
-	pgflag.command = '<';
-	tout = pgflag.snarf();
-	acos.taskout(pgflag, tout, options.log)
 
-def mfcal(v, refant):
-	mfcal = mirexecb.TaskMfCal();
-	mfcal.vis = v; 
-	mfcal.refant = refant;
-	mfcal.interval = 100000;
- 	o = mfcal.snarf();
-	print mfcal.commandLine()
-	print o; 
+	# This specifies the SumThresholding command.
+	pgflag.command = '<'
+	print pgflag.__dict__
+	tout = pgflag.snarf();
+	acos.taskout(pgflag, tout, params.log)
+
+def mfcal(v):
+	mfcal = mirexec.TaskMfCal()
+	mfcal.vis = v
+	mfcal.refant = params.refant
+	mfcal.interval = 100000
+	mfcal.edge = params.edge
+	print mfcal.__dict__
+ 	o = mfcal.snarf()
 
 def gpcopy(v):
-	gpcopy = mirexecb.TaskGPCopy();
+	gpcopy = mirexec.TaskGPCopy();
 	for i in range(len(v)-1):
 		gpcopy.vis = v[0];
 		gpcopy.out = v[i];
@@ -89,29 +99,33 @@ def cal2srcs(cal, srcs):
 	Srcs = 'src1,src2'
 	'''
 	for s in srcs.split(','):
-		puthd = mirexecb.TaskPutHead();
+		puthd = mirexec.TaskPutHead();
 		puthd.in_ = s+'/restfreq';
 		puthd.value = 1.420405752;
+		print puthd.__dict__
 		o = puthd.snarf();
-		print o;
 		
 		puthd.in_ = s+'/interval'
 		puthd.value = 1.0
 		puthd.type = 'double'
+		print puthd.__dict__
 		o = puthd.snarf();
-		print o; 
 	
-		gpcopy  = mirexecb.TaskGPCopy();
+		gpcopy  = mirexec.TaskGPCopy();
 		gpcopy.vis = cal;
 		gpcopy.out = s;
+		print gpcopy.__dict__
 		o = gpcopy.snarf();
-		print o; 
 
-def mergensplit(vis, src):
-	uvcat = mirexecb.TaskUVCat();
+def mergensplit(vis, src, out=None):
+	uvcat = mirexec.TaskUVCat();
 	uvcat.vis = vis;
 	uvcat.select='source('+src+')';
-	uvcat.out = src+'.UV'
+	if out!=None:
+		uvcat.out = out
+	else:
+		uvcat.out = src+'.UV'
+	print uvcat.__dict__
 	o = uvcat.snarf();
 
 def get_params(configfile):
@@ -123,5 +137,35 @@ def get_params(configfile):
 	return params
 
 if __name__=="__main__":
+	
+	# Get the parameters
 	params = get_params(options.config)
+	
+	# Import the files and then do the Tsys calibration
 	ms2uvfits(params.msfiles)
+	for m in params.msfiles.split(','):
+		infits(m.upper().replace('.MS', '.UVF'))
+	for c in params.cals.split(","):
+		mergensplit(params.msfiles.replace(".MS",".UV"), c)
+	for s in params.srcs.split(","):
+		mergensplit(params.msfiles.replace(".MS",".UV"), s)
+	
+	# Do Calcals
+	print "\n"
+	print "\n"
+	for c in params.cals.split(","):
+		mfcal(c+".UV")
+		pgflag(c+".UV", params.flagpar)
+		mfcal(c+".UV")
+		pgflag(c+".UV", params.flagpar2)
+		mfcal(c+".UV")
+	cal0 = params.cals.split(",")[0]
+
+	# Copy it over to the Sources
+	print "\n"
+	print "\n"
+	for s in params.srcs.split(","):
+		cal2srcs(cal0+".UV", s+".UV")
+		pgflag(s+".UV", params.flagpar)
+	for s in params.srcs.split(","):
+		mergensplit(s+".UV", src=s, out=s+".UVc")
