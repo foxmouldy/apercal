@@ -12,12 +12,17 @@ log = log.txt
 stokes = qq
 
 [selfcal]
-vis = src.uv_chan0
-interval = 1
+vis = NGC4278.UVc
+tag = lcal
+interval = 2
 select = -uvrange(0,0.2)
-nloops = 5
+nloops = 1 
 robust = -2.0
 line = channel,900,50,1,1
 sopts = mfs,phase
-iopts= = mfs,double
+iopts = mfs,double
+fwhm=''
+clip=''
 cutoff = 1e-2
+c0 = 25.
+dc = 25.

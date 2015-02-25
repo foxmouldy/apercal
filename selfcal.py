@@ -20,11 +20,11 @@ parser = OptionParser(usage=usage);
 
 parser.add_option("--vis", "-v", type = 'string', dest = 'vis', default=None, 
 	help = "Vis to be selfcal'd [None]");
-parser.add_option("--settings", "-s", type = 'string', dest='settings', default=None, 
-	help = 'Settings file to be used [None]')
+parser.add_option("--config", "-c", type = 'string', dest='config', default=None, 
+	help = 'Config file to be used [None]')
 parser.add_option('--lsm', '-l', action='store_true', dest='lsm', default=False,
 	help = "Use LSM for calibration [False]")
-parser.add_option('--nloops', '-n', type='int', dest='n', default=0, 
+parser.add_option('--nloops', '-n', type='int', dest='nloops', default=0, 
 	help = 'Number of Selfcal Loops [0]')
 parser.add_option('--bdsm', '-b', action='store_true', dest='bdsm', default=False, 
 	help = 'Use PyBDSM to create Gaussian LSM0 [False]')
@@ -40,7 +40,7 @@ if __name__=="__main__":
 		parser.print_help();
 		dummy = sys.exit(0);
 
-options.n = int(options.n)
+options.nloops = int(options.nloops)
 
 class Bunch: 
 	def __init__(self, **kwds): 
@@ -118,7 +118,7 @@ def selfcal(params):
 	selfcal.options = params.sopts
 	selfcal.interval = params.interval
 	selfcal.line = params.line
-	if params.clip!=None:
+	if params.clip!='':
 		selfcal.clip = params.clip
 	tout = selfcal.snarf()
 	return tout
@@ -146,11 +146,10 @@ def get_cutoff(rms=1e-3, fac=2., imax=1e-2, invout=None):
 	else:
 		return noise
 
-#def selfcal_cycle(j=1):
 def image_cycle(j=1):
-	c1 = pl.linspace(3.,9.,3.)*(j*4.)
+	c1 = pl.linspace(float(params.c0), float(params.c0)+2.*float(params.dc), 3)*(j)
+	print c1
 	c2 = c1/10.
-	#c2 = pl.linspace(3.,9.,3.)*j
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/c1[0], params.mask)
@@ -170,10 +169,6 @@ def image_cycle(j=1):
 	cmmax, cmunits = getimmax(params.model)
 	params.clip = cmmax/(100.*j)
 	restor(params, mode='residual')
-	# Selfcal
-	#tout = selfcal(params) 
-	#print 'Selfcal Output:'
-	#print ("\n".join(map(str, tout[0])))
 
 
 
@@ -211,9 +206,6 @@ def lsm():
 	c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
 	os.system(c)
 	print 'Made LSM'
-	params.model = params.lsm
-	params.sopts='mfs,phase'
-	params.interval='5'
 	tout = selfcal(params) 
 	print 'Selfcal Output Using LSM:'
 	print ("\n".join(map(str, tout[0])))
@@ -232,18 +224,33 @@ def iteri(i):
 
 
 # Setup the parameters 
-params = Bunch(vis=options.vis, select='-uvrange(0,1)', tag = 'sc', map='map_temp', beam='beam_temp', 
-	mask = 'mask_temp', model='model_temp', image = 'image_temp', residual = 'residual_temp', robust='-2.0',
-	lsm='lsm_temp', line='channel,900,1,1,1', sopts='mfs,phase', iopts='mfs,double', interval=5,
-	fwhm='', cutoff=1e-2, clip=None)
 
+# First, check if we want to use a config file
+
+def get_params(configfile):
+	config_parser = SafeConfigParser()
+	config_parser.read(configfile)
+	params = Bunch()
+	for p in config_parser.items('selfcal'):
+		setattr(params, p[0], p[1])
+	return params
+
+# NOTE: Setup the parameters
+if options.config!=None:
+	params = get_params(options.config)
+else:
+	params = Bunch(vis=options.vis, select='-uvrange(0,1)', tag = 'sc', map='map_temp', beam='beam_temp', 
+		mask = 'mask_temp', model='model_temp', image = 'image_temp', residual = 'residual_temp', robust='-2.0',
+		lsm='lsm_temp', line='channel,900,1,1,1', sopts='mfs,phase', iopts='mfs,double', interval=5,
+		fwhm='', cutoff=1e-2, clip='', nloops=None)
+
+# NOTE: Command line parameters **always** trumps file parameters.
 if options.par!=None:
 	pars = options.par.split(';')
 	for par in pars:
 		p = par.split(':')	
 		setattr(params, p[0], p[1])
 
-# Make the initial image.
 
 def mkim0():
 	'''
@@ -252,11 +259,12 @@ def mkim0():
 	print "Making Initial Image"
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
-	maths(params.map, immax/3, params.mask)
+	maths(params.map, immax/3., params.mask)
 	params.cutoff = get_cutoff(invout = invout, fac=4)
 	clean(params)
 	restor(params)
 
+# Make the Initial Image
 if options.mkim0!=False:
 	iteri(i=0)
 	mkim0()
@@ -265,11 +273,13 @@ else:
 	iteri(i=0)
 	mkim0()
 
+# Use PyBDSM. Deprecated. DO NOT USE!
 if options.bdsm!=False:
 	params.lsm = params.tag+'_bdsm'
 	print 'Using PyBDSM to make LSM'
 	bdsm()
 
+# Use the NVSS as the LSM. Untested.
 if options.lsm!=False:
 	params.lsm = params.tag+'_lsm'
 	params.model = params.lsm
@@ -278,8 +288,16 @@ if options.lsm!=False:
 
 R = [] # Ratio of actual to theoretical noise
 
-if options.n!=0:
-	for i in range(0, options.n):
+
+# NOTE: Figure out how many loops to run.
+if options.nloops!=0:
+	nloops = int(options.nloops)
+else:
+	nloops = int(params.nloops)
+
+print "Running ", nloops, " SelfCal Iterations."
+if nloops!=0:
+	for i in range(0, nloops):
 		print 'Selfcal Cycle '+str(i+1)
 		iteri(i+1)
 		image_cycle(j=i+1)
@@ -289,14 +307,10 @@ if options.n!=0:
 		ratstr = [s for s in tout[0] if 'Ratio of Actual to Theoretical noise:' in s]
 		R.append(float(str(ratstr[0]).split(':')[1]))
 
-	R = pl.array(R)
-	pl.plot(R, 'k-', lw=2)
-	pl.xlabel("Run #")
-	pl.ylabel("Ratio of Actual to Theoretical Noise")
-	pl.savefig(params.tag+'.scratio.pdf', dpi=300)
-	pl.close()
 	# Make the final image after selfcal
 	otag = params.tag
 	params.tag+='_asc'
 	iteri(i='')
-	image_cycle(j=i+1)	
+	image_cycle(j=i+1)
+
+print "DONE."
