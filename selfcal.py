@@ -136,23 +136,7 @@ def wgains(params):
 	os.system('rm -r '+params.vis)
 	os.system('mv .temp '+params.vis)
 
-'''
-def get_cutoff(rms=1e-3, fac=2., immax=1e-2, invout=None):
-	#Simple function to calculate the cutoff
-	# invout is the text array from invert.
-	nf = float(params.nf)
-	if invout!=None:
-		rmstr = [s for s in invout[0] if 'Theoretical rms noise:' in s]
-		noise = nf*float(str(rmstr[0]).split(':')[1])
-	else:
-		noise = nf*float(rms)
-	if immax/fac > noise:
-		return immax/fac
-	else:
-		return noise
-'''
-
-def get_cutoff(immax=1e-2, fac=2.):
+def get_cutoff(cutoff=1e-3):
 	'''
 	This uses OBSRMS to calculate the theoretical RMS in the image.
 	'''
@@ -168,32 +152,28 @@ def get_cutoff(immax=1e-2, fac=2.):
 	rmsstr = obsrms.snarf()
 	rms = rmsstr[0][3].split(";")[0].split(":")[1].split(" ")[-2]
 	noise = float(params.nf)*float(rms)/1000.
-	if immax/fac > noise:
-		return immax/fac
+	if cutoff > noise:
+		return cutoff
 	else:
 		return noise
 
 def image_cycle(j=1):
 	c1 = pl.linspace(float(params.c0), float(params.c0)+2.*float(params.dc), 3)*(j)
-	print c1
-	c2 = c1/10.
+	c2 = c1*10.
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/c1[0], params.mask)
-	#params.cutoff = get_cutoff(invout = invout, fac=c2[0], immax=immax)
-	params.cutoff = get_cutoff(fac=c2[0], immax=immax)
+	params.cutoff = get_cutoff(cutoff=immax/c2[0])
 	clean(params)
 	restor(params)
 	immax, imunits = getimmax(params.image)
 	maths(params.image, immax/c1[1], params.mask)
-	#params.cutoff = get_cutoff(invout = invout, fac=c2[1], immax=immax)
-	params.cutoff = get_cutoff(fac=c2[1], immax=immax)
+	params.cutoff = get_cutoff(cutoff=immax/c2[1])	
 	clean(params)
 	restor(params)
 	immax, imunits = getimmax(params.image)
 	maths(params.image, immax/c1[2], params.mask)
-	#params.cutoff = get_cutoff(invout = invout, fac=c2[2], immax=immax)
-	params.cutoff = get_cutoff(fac=c2[2], immax=immax)
+	params.cutoff = get_cutoff(cutoff=immax/c2[2])
 	clean(params)
 	restor(params)
 	cmmax, cmunits = getimmax(params.model)
@@ -309,12 +289,12 @@ def mkim0():
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/float(params.c0), params.mask)
-	#params.cutoff = get_cutoff(invout = invout, fac=float(params.c0), immax=immax)
-	params.cutoff = get_cutoff(fac=float(params.c0), immax=immax)
+	params.cutoff = get_cutoff(cutoff=immax/float(params.c0))
 	clean(params)
 	restor(params)
 
 # Make the Initial Image
+
 if options.mkim0!=False:
 	iteri(i=0)
 	mkim0()
@@ -322,6 +302,7 @@ if options.mkim0!=False:
 else:
 	iteri(i=0)
 	mkim0()
+
 
 # Use PyBDSM. Deprecated. DO NOT USE!
 if options.bdsm!=False:
