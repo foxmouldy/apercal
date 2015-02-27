@@ -1002,6 +1002,10 @@ class TaskConvol (TaskBase):
 Here is the new stuff inserted by Bradley Frank. 
 '''
 
+class TaskObsRMS (TaskBase):
+	_keywords = ['tsys', 'jyperk', 'antdiam', 'freq', 'theta', 'nants', 'bw', 'deltav','inttime', 'coreta']
+
+
 class TaskPGFlag (TaskBase):
 	_keywords = ['vis', 'line', 'select', 'stokes', 'flagpar', 'command'];
 	_options = ['selgen', 'nosrc', 'noapply', 'nodisp', 'logstats', 'nocal', 'nopass', 'nopol']

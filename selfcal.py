@@ -5,7 +5,7 @@ import sys
 import os
 from ConfigParser import SafeConfigParser
 import imp
-
+from apercal import mirexecb 
 #Check if PyBDSM is installed
 try:
 	imp.find_module('lofar')
@@ -13,6 +13,8 @@ try:
 	from lofar import bdsm
 except ImportError:
 	isbdsm = False
+
+
 
 
 usage = "usage: %prog options"
@@ -71,6 +73,7 @@ def invertr(params):
 	invert.fwhm = params.fwhm
 	invert.robust= params.robust 
 	tout = invert.snarf()
+	print ("\n".join(map(str, tout[0])))
 	return tout
 
 def clean(params):
@@ -86,6 +89,8 @@ def clean(params):
 	os.system('rm -r '+params.model)
 	clean.out = params.model 
 	tout = clean.snarf()
+	print ("\n".join(map(str, tout[0])))
+	return tout
 
 def restor(params, mode='clean'):	
 	restor = mirexec.TaskRestore()
@@ -131,18 +136,40 @@ def wgains(params):
 	os.system('rm -r '+params.vis)
 	os.system('mv .temp '+params.vis)
 
-def get_cutoff(rms=1e-3, fac=2., imax=1e-2, invout=None):
-	'''
-	Simple function to calculate the cutoff
-	'''
+'''
+def get_cutoff(rms=1e-3, fac=2., immax=1e-2, invout=None):
+	#Simple function to calculate the cutoff
 	# invout is the text array from invert.
+	nf = float(params.nf)
 	if invout!=None:
 		rmstr = [s for s in invout[0] if 'Theoretical rms noise:' in s]
-		noise = 3.*float(str(rmstr[0]).split(':')[1])
+		noise = nf*float(str(rmstr[0]).split(':')[1])
 	else:
-		noise = 5.*float(rms)
-	if imax/fac > noise:
-		return imax/fac
+		noise = nf*float(rms)
+	if immax/fac > noise:
+		return immax/fac
+	else:
+		return noise
+'''
+
+def get_cutoff(immax=1e-2, fac=2.):
+	'''
+	This uses OBSRMS to calculate the theoretical RMS in the image.
+	'''
+	obsrms = mirexecb.TaskObsRMS()
+	obsrms.tsys = params.tsys
+	obsrms.jyperk = 8.
+	obsrms.freq = 1.4 # Does not depend strongly on frequency
+	obsrms.theta = 12. # Maximum resolution in arcseconds
+	obsrms.nants = 11
+	obsrms.bw = params.bw # In MHz! 
+	obsrms.inttime = params.inttime
+	obsrms.antdiam = 25.
+	rmsstr = obsrms.snarf()
+	rms = rmsstr[0][3].split(";")[0].split(":")[1].split(" ")[-2]
+	noise = float(params.nf)*float(rms)/1000.
+	if immax/fac > noise:
+		return immax/fac
 	else:
 		return noise
 
@@ -153,24 +180,25 @@ def image_cycle(j=1):
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/c1[0], params.mask)
-	params.cutoff = get_cutoff(invout = invout, fac=c2[0])
+	#params.cutoff = get_cutoff(invout = invout, fac=c2[0], immax=immax)
+	params.cutoff = get_cutoff(fac=c2[0], immax=immax)
 	clean(params)
 	restor(params)
 	immax, imunits = getimmax(params.image)
 	maths(params.image, immax/c1[1], params.mask)
-	params.cutoff = get_cutoff(invout = invout, fac=c2[1])
+	#params.cutoff = get_cutoff(invout = invout, fac=c2[1], immax=immax)
+	params.cutoff = get_cutoff(fac=c2[1], immax=immax)
 	clean(params)
 	restor(params)
 	immax, imunits = getimmax(params.image)
 	maths(params.image, immax/c1[2], params.mask)
-	params.cutoff = get_cutoff(invout = invout, fac=c2[2])
+	#params.cutoff = get_cutoff(invout = invout, fac=c2[2], immax=immax)
+	params.cutoff = get_cutoff(fac=c2[2], immax=immax)
 	clean(params)
 	restor(params)
 	cmmax, cmunits = getimmax(params.model)
 	params.clip = cmmax/(100.*j)
 	restor(params, mode='residual')
-
-
 
 def bdsm():
 	'''
@@ -239,10 +267,31 @@ def get_params(configfile):
 if options.config!=None:
 	params = get_params(options.config)
 else:
-	params = Bunch(vis=options.vis, select='-uvrange(0,1)', tag = 'sc', map='map_temp', beam='beam_temp', 
-		mask = 'mask_temp', model='model_temp', image = 'image_temp', residual = 'residual_temp', robust='-2.0',
-		lsm='lsm_temp', line='channel,900,1,1,1', sopts='mfs,phase', iopts='mfs,double', interval=5,
-		fwhm='', cutoff=1e-2, clip='', nloops=None)
+	params = Bunch(vis=options.vis, 
+		select='-uvrange(0,1)', 
+		tag = 'sc', 
+		map='map_temp', 
+		beam='beam_temp', 
+		mask = 'mask_temp', 
+		model='model_temp', 
+		image = 'image_temp', 
+		residual = 'residual_temp', 
+		robust='-2.0',
+		lsm='lsm_temp', 
+		line='channel,900,1,1,1', 
+		sopts='mfs,phase', 
+		iopts='mfs,double', 
+		interval=5,
+		fwhm='', 
+		cutoff=1e-2, 
+		clip='', 
+		nloops=None, 
+		nf=3,
+		c0=2.5,
+		dc=3.0, 
+		inttime=1., 
+		tsys = 30., 
+		bw = 20.)
 
 # NOTE: Command line parameters **always** trumps file parameters.
 if options.par!=None:
@@ -259,8 +308,9 @@ def mkim0():
 	print "Making Initial Image"
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
-	maths(params.map, immax/3., params.mask)
-	params.cutoff = get_cutoff(invout = invout, fac=4)
+	maths(params.map, immax/float(params.c0), params.mask)
+	#params.cutoff = get_cutoff(invout = invout, fac=float(params.c0), immax=immax)
+	params.cutoff = get_cutoff(fac=float(params.c0), immax=immax)
 	clean(params)
 	restor(params)
 

@@ -125,7 +125,6 @@ def mergensplit(vis, src, out=None):
 		uvcat.out = out
 	else:
 		uvcat.out = src+'.UV'
-	print uvcat.__dict__
 	o = uvcat.snarf();
 
 def get_params(configfile):
@@ -154,10 +153,9 @@ if __name__=="__main__":
 	print "\n"
 	print "\n"
 	for c in params.cals.split(","):
-		mfcal(c+".UV")
-		pgflag(c+".UV", params.flagpar)
-		mfcal(c+".UV")
-		pgflag(c+".UV", params.flagpar2)
+		for p in params.flagpar.split(";"):
+			mfcal(c+".UV")
+			pgflag(c+".UV", p)
 		mfcal(c+".UV")
 	cal0 = params.cals.split(",")[0]
 
