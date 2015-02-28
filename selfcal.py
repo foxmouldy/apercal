@@ -151,7 +151,7 @@ def get_cutoff(cutoff=1e-3):
 	obsrms.antdiam = 25.
 	rmsstr = obsrms.snarf()
 	rms = rmsstr[0][3].split(";")[0].split(":")[1].split(" ")[-2]
-	noise = float(params.nf)*float(rms)/1000.
+	noise = float(params.nsigma)*float(rms)/1000.
 	if cutoff > noise:
 		return cutoff
 	else:
@@ -159,7 +159,7 @@ def get_cutoff(cutoff=1e-3):
 
 def image_cycle(j=1):
 	c1 = pl.linspace(float(params.c0), float(params.c0)+2.*float(params.dc), 3)*(j)
-	c2 = c1*10.
+	c2 = c1*100.
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/c1[0], params.mask)
@@ -266,7 +266,7 @@ else:
 		cutoff=1e-2, 
 		clip='', 
 		nloops=None, 
-		nf=3,
+		nsigma=3,
 		c0=2.5,
 		dc=3.0, 
 		inttime=1., 
