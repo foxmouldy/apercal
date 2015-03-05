@@ -24,8 +24,10 @@ parser = OptionParser(usage=usage);
 
 parser.add_option("--config", "-c", type='string', dest='config', default="None", 
 	help = "Config for input values [None]")
-parser.add_option("--pgflag", "-p", action="store_true", dest="dopgflag", default=False,
+parser.add_option("--pgflag", "-p", action="store_true", dest="pgflag", default=False,
 	help = "Use PGFLAG for automated flagging [False]")
+parser.add_option("--commands", dest="commands", default="filer,calr", 
+	help = "Calibration steps to make [filer,calr]")
 
 (options, args) = parser.parse_args();
 
@@ -134,11 +136,7 @@ def get_params(configfile):
 		setattr(params, p[0], p[1])
 	return params
 
-if __name__=="__main__":
-	
-	# Get the parameters
-	params = get_params(options.config)
-	
+def filer(params):
 	# Import the files and then do the Tsys calibration
 	ms2uvfits(params.msfiles)
 	for m in params.msfiles.split(','):
@@ -147,20 +145,18 @@ if __name__=="__main__":
 		mergensplit(params.msfiles.replace(".MS",".UV"), c)
 	for s in params.srcs.split(","):
 		mergensplit(params.msfiles.replace(".MS",".UV"), s)
-	
-	# Do Calcals
-	print "\n"
-	print "\n"
+
+def calr(params):
+	# Actually do the calibration.
 	for c in params.cals.split(","):
 		if options.pgflag!=False:
 			#NOTE: Only do PGFLAG if activated from command line.
 			pgflag(c+".UV", params.pgflag)
 		mfcal(c+".UV")
+	
 	cal0 = params.cals.split(",")[0]
 
 	# Copy it over to the Sources
-	print "\n"
-	print "\n"
 	for s in params.srcs.split(","):
 		cal2srcs(cal0+".UV", s+".UV")
 		#NOTE: Only do PGFLAG if activated from command line.
@@ -168,3 +164,60 @@ if __name__=="__main__":
 			pgflag(s+".UV", params.flagpar)
 	for s in params.srcs.split(","):
 		mergensplit(s+".UV", src=s, out=s+".UVc")
+
+def splitr(params):
+	"""
+	Splits each corrected visfile into subbands.
+	"""
+	for s in params.srcs.split(','):
+		print "Splitting ", s, " into subbands"
+		cmd = "uvsplit vis="+s+".UVc"
+		print cmd
+		print "Moving subbands into ", s
+		os.system(cmd)
+		cmd = "mkdir "+s
+		print cmd
+		os.system(cmd)
+		cmd = "mv "+s.lower()+".* "+s+"/"
+		print cmd
+		os.system(cmd)
+
+if __name__=="__main__":
+	
+	# Get the parameters
+	params = get_params(options.config)
+	for c in options.commands.split(','):
+		exec(c+"(params)")
+	# Import the files and then do the Tsys calibration
+
+#	ms2uvfits(params.msfiles)
+#	for m in params.msfiles.split(','):
+#		infits(m.upper().replace('.MS', '.UVF'))
+#	for c in params.cals.split(","):
+#		mergensplit(params.msfiles.replace(".MS",".UV"), c)
+#	for s in params.srcs.split(","):
+#		mergensplit(params.msfiles.replace(".MS",".UV"), s)
+#	
+	# Do Calcals
+	print "\n"
+	print "\n"
+	
+#		
+#	for c in params.cals.split(","):
+#		if options.pgflag!=False:
+#			#NOTE: Only do PGFLAG if activated from command line.
+#			pgflag(c+".UV", params.pgflag)
+#		mfcal(c+".UV")
+#	
+#	cal0 = params.cals.split(",")[0]
+#
+#	# Copy it over to the Sources
+#	print "\n"
+#	print "\n"
+#	for s in params.srcs.split(","):
+#		cal2srcs(cal0+".UV", s+".UV")
+#		#NOTE: Only do PGFLAG if activated from command line.
+#		if options.pgflag!=False:
+#			pgflag(s+".UV", params.flagpar)
+#	for s in params.srcs.split(","):
+#		mergensplit(s+".UV", src=s, out=s+".UVc")
