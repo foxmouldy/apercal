@@ -6,6 +6,9 @@ import os
 from ConfigParser import SafeConfigParser
 import imp
 from apercal import mirexecb 
+import threading 
+import time
+
 #Check if PyBDSM is installed
 try:
 	imp.find_module('lofar')
@@ -31,18 +34,14 @@ parser.add_option('--mkim0', '-m', action='store_true', dest='mkim0', default=Fa
 	help = 'MFS-Image the VIS and exit [False].')
 parser.add_option('--par', '-p', type='string', dest='par', default=None, 
 	help = 'Overwrite a single parameter: --par <par>:<value>;<par2>:<value2>')
-parser.add_option('--cleanup', action='store_true', dest='cleanup', default=False, 
-	help = "Remove the old gains and start from scratch [False]")
-(options, args) = parser.parse_args();
+parser.add_option("--cleanup", action='store_true', dest='cleanup', default=False,
+	help = 'Remove old gains and start from scratch [False]')
+(options, args) = parser.parse_args()	
 
-if __name__=="__main__":
-	if len(sys.argv)==1: 
-		parser.print_help();
-		dummy = sys.exit(0);
-
-options.nloops = int(options.nloops)
-
-class Bunch: 
+class Bunch:
+	'''
+	Dummy container for the parameters.
+	'''
 	def __init__(self, **kwds): 
 		self.__dict__.update(kwds)
 
@@ -71,7 +70,7 @@ def invertr(params):
 	invert.fwhm = params.fwhm
 	invert.robust= params.robust 
 	tout = invert.snarf()
-	print ("\n".join(map(str, tout[0])))
+	#print ("\n".join(map(str, tout[0])))
 	return tout
 
 def clean(params):
@@ -87,7 +86,7 @@ def clean(params):
 	os.system('rm -r '+params.model)
 	clean.out = params.model 
 	tout = clean.snarf()
-	print ("\n".join(map(str, tout[0])))
+	#print ("\n".join(map(str, tout[0])))
 	return tout
 
 def restor(params, mode='clean'):	
@@ -134,7 +133,7 @@ def wgains(params):
 	os.system('rm -r '+params.vis)
 	os.system('mv .temp '+params.vis)
 
-def get_cutoff(cutoff=1e-3):
+def get_cutoff(params, cutoff=1e-3):
 	'''
 	This uses OBSRMS to calculate the theoretical RMS in the image.
 	'''
@@ -155,30 +154,30 @@ def get_cutoff(cutoff=1e-3):
 	else:
 		return noise
 
-def image_cycle(j=1):
+def image_cycle(params, j=1):
 	c1 = pl.linspace(float(params.c0), float(params.c0)+2.*float(params.dc), 3)*(j)
 	c2 = c1*10.
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/c1[0], params.mask)
-	params.cutoff = get_cutoff(cutoff=immax/c2[0])
+	params.cutoff = get_cutoff(params, cutoff=immax/c2[0])
 	clean(params)
 	restor(params)
 	immax, imunits = getimmax(params.image)
 	maths(params.image, immax/c1[1], params.mask)
-	params.cutoff = get_cutoff(cutoff=immax/c2[1])	
+	params.cutoff = get_cutoff(params, cutoff=immax/c2[1])	
 	clean(params)
 	restor(params)
 	immax, imunits = getimmax(params.image)
 	maths(params.image, immax/c1[2], params.mask)
-	params.cutoff = get_cutoff(cutoff=immax/c2[2])
+	params.cutoff = get_cutoff(params, cutoff=immax/c2[2])
 	clean(params)
 	restor(params)
 	cmmax, cmunits = getimmax(params.model)
 	params.clip = cmmax/(100.*j)
 	restor(params, mode='residual')
 
-def bdsm():
+def bdsm(params):
 	'''
 	This runs PyBDSM on the image to make a mask from the Gaussian output from the source
 	finder. 
@@ -201,25 +200,24 @@ def bdsm():
 	fits.out = params.lsm
 	fits.snarf()
 	params.model = params.lsm
-	print params
+	#print params
 	sys.exit(0)
 	tout = selfcal(params)
-	print 'Selfcal Output Using PyBDSM:'
-	print ("\n".join(map(str, tout[0])))
+	#print 'Selfcal Output Using PyBDSM:'
+	#print ("\n".join(map(str, tout[0])))
 
-
-def lsm():
+def lsm(params):
 	c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
 	os.system(c)
-	print 'Made LSM'
+	#print 'Made LSM'
 	tout = selfcal(params) 
-	print 'Selfcal Output Using LSM:'
-	print ("\n".join(map(str, tout[0])))
+	#print 'Selfcal Output Using LSM:'
+	#print ("\n".join(map(str, tout[0])))
 
 
-global params
+#global params
 	
-def iteri(i):
+def iteri(params, i):
 	params.map = params.tag+'_map'+str(i)
 	params.beam = params.tag+'_beam'+str(i)
 	params.mask = params.tag+'_mask'+str(i)
@@ -233,21 +231,16 @@ def iteri(i):
 
 # First, check if we want to use a config file
 
-def get_params(configfile):
-	config_parser = SafeConfigParser()
-	config_parser.read(configfile)
-	params = Bunch()
-	for p in config_parser.items('selfcal'):
-		setattr(params, p[0], p[1])
-	return params
-
-# NOTE: Setup the parameters
-if options.config!=None:
-	#NOTE: Get the parameters from the file
-	params = get_params(options.config)
-else:
-	#NOTE: Setup a default set of parameters. 
-	params = Bunch(vis=options.vis, 
+def get_params(configfile=None):
+	if configfile!=None:
+		config_parser = SafeConfigParser()
+		config_parser.read(configfile)
+		params = Bunch()
+		for p in config_parser.items('selfcal'):
+			setattr(params, p[0], p[1])
+		return params
+	else:
+		params = Bunch(vis=options.vis, 
 		select='-uvrange(0,1)', 
 		tag = 'sc', 
 		map='map_temp', 
@@ -272,6 +265,40 @@ else:
 		inttime=1., 
 		tsys = 30., 
 		bw = 20.)
+		return params
+
+
+# NOTE: Setup the parameters
+##if options.config!=None:
+#	#NOTE: Get the parameters from the file
+#	params = get_params(options.config)
+#else:
+#	#NOTE: Setup a default set of parameters. 
+#	params = Bunch(vis=options.vis, 
+#		select='-uvrange(0,1)', 
+#		tag = 'sc', 
+#		map='map_temp', 
+#		beam='beam_temp', 
+#		mask = 'mask_temp', 
+#		model='model_temp', 
+#		image = 'image_temp', 
+#		residual = 'residual_temp', 
+#		robust='-2.0',
+#		lsm='lsm_temp', 
+#		line='channel,900,1,1,1', 
+#		sopts='mfs,phase', 
+#		iopts='mfs,double', 
+#		interval=5,
+#		fwhm='', 
+#		cutoff=1e-2, 
+#		clip='', 
+#		nloops=None, 
+#		nsigma=3,
+#		c0=2.5,
+#		dc=3.0, 
+#		inttime=1., 
+#		tsys = 30., 
+#		bw = 20.)
 
 # NOTE: Command line parameters **always** trumps file parameters.
 if options.par!=None:
@@ -280,79 +307,112 @@ if options.par!=None:
 		p = par.split(':')	
 		setattr(params, p[0], p[1])
 
-
-def mkim0():
+def mkim0(params):
 	'''
 	Makes the 0th image.
 	'''
-	print "Making Initial Image"
+	#print "Making Initial Image"
 	invout = invertr(params)
 	immax, imunits = getimmax(params.map)
 	maths(params.map, immax/float(params.c0), params.mask)
-	params.cutoff = get_cutoff(cutoff=immax/float(params.c0))
+	params.cutoff = get_cutoff(params, cutoff=immax/float(params.c0))
 	clean(params)
 	restor(params)
 
 # Make the Initial Image
-visfiles = params.vis.split(',')
 
-for k in range(0,len(visfiles)):
-	params.vis = visfiles[k]
-	if options.cleanup!=False:
-		os.system("rm -r "+params.vis+"/gains")
-	if len(visfiles)>1:
-		params.tag = visfiles[k]
-	print "SELFCAL on ", params.vis, " -> ", params.tag
-	if options.mkim0!=False:
-		iteri(i=0)
-		image_cycle()
-		sys.exit(0)
+class mselfcal(threading.Thread):
+	def __init__(self, params):
+		threading.Thread.__init__(self)
+		self.params = params
+
+	def run(self):
+		'''
+		This is the selfcal engine that gets farmed out to multiple threads. 
+		'''
+		params = self.params
+		print "SelfCal on ", params.vis, ' in this thread for target ', params.tag
+		#sys.exit(0)
+		if options.mkim0!=False:
+			iteri(params, i=0)
+			image_cycle(params)
+			sys.exit(0) # Perhaps this is the most appropriate?
+		else:
+			#NOTE: This seemingly defunct piece of code is necessary for vizquery to have a
+			#reference.
+			iteri(params, i=0)
+			mkim0(params)
+		
+		# Use PyBDSM. Deprecated. DO NOT USE!
+		if options.bdsm!=False:
+			params.lsm = params.tag+'_bdsm'
+			print 'Using PyBDSM to make LSM'
+			bdsm(params)
+		
+		#NOTE: Use the NVSS as the LSM. Not always successful. 
+		if options.lsm!=False:
+			params.lsm = params.tag+'_lsm'
+			params.model = params.lsm
+			print 'Making LSM'
+			lsm(params)
+		
+		R = [] #NOTE: Ratio of actual to theoretical noise
+		
+		
+		# NOTE: Figure out how many loops to run, command line parameters **always** trump file
+		# parameters.
+		if options.nloops!=0:
+			nloops = int(options.nloops)
+		else:
+			nloops = int(params.nloops)
+		
+		#print "Running ", nloops, " SelfCal Iterations."
+		if nloops!=0:
+			for i in range(0, nloops):
+				#print 'Selfcal Cycle '+str(i+1)
+				iteri(params, i+1)
+				image_cycle(params, j=i+1)
+				tout = selfcal(params) 
+				'Selfcal Output: '+str(i+1)
+				#print ("\n".join(map(str, tout[0])))
+				ratstr = [s for s in tout[0] if 'Ratio of Actual to Theoretical noise:' in s]
+				R.append(float(str(ratstr[0]).split(':')[1]))
+		
+			#NOTE: Make the final image after selfcal, using the mask and cutoffs from the last run.
+			otag = params.tag
+			params.tag+='_asc'
+			iteri(params, i='')
+			image_cycle(params, j=i+1)
+
+nt = 0
+
+params0 = get_params(configfile=options.config)
+
+visfiles = params0.vis
+
+if __name__=="__main__":
+	if len(sys.argv)==1: 
+		parser.print_help()
+		dummy = sys.exit(0)
 	else:
-		#NOTE: This seemingly defunct piece of code is necessary for vizquery to have a
-		#reference.
-		iteri(i=0)
-		mkim0()
-	
-	
-	# Use PyBDSM. Deprecated. DO NOT USE!
-	if options.bdsm!=False:
-		params.lsm = params.tag+'_bdsm'
-		print 'Using PyBDSM to make LSM'
-		bdsm()
-	
-	#NOTE: Use the NVSS as the LSM. Not always successful. 
-	if options.lsm!=False:
-		params.lsm = params.tag+'_lsm'
-		params.model = params.lsm
-		print 'Making LSM'
-		lsm()
-	
-	R = [] #NOTE: Ratio of actual to theoretical noise
-	
-	
-	# NOTE: Figure out how many loops to run, command line parameters **always** trump file
-	# parameters.
-	if options.nloops!=0:
-		nloops = int(options.nloops)
-	else:
-		nloops = int(params.nloops)
-	
-	print "Running ", nloops, " SelfCal Iterations."
-	if nloops!=0:
-		for i in range(0, nloops):
-			print 'Selfcal Cycle '+str(i+1)
-			iteri(i+1)
-			image_cycle(j=i+1)
-			tout = selfcal(params) 
-			'Selfcal Output: '+str(i+1)
-			print ("\n".join(map(str, tout[0])))
-			ratstr = [s for s in tout[0] if 'Ratio of Actual to Theoretical noise:' in s]
-			R.append(float(str(ratstr[0]).split(':')[1]))
-	
-		#NOTE: Make the final image after selfcal, using the mask and cutoffs from the last run.
-		otag = params.tag
-		params.tag+='_asc'
-		iteri(i='')
-		image_cycle(j=i+1)
-	
-print "DONE."
+		options.nloops = int(options.nloops)
+		THREADS = []
+		for v in visfiles.split(','):
+			if options.cleanup!=False:
+				os.system("rm -r "+v+"/gains")
+			print "Running Thread ", nt, " for ", v
+			nt+=1
+			pars = get_params(configfile=options.config)
+			pars.vis = v
+			pars.tag = v
+			THREADS.append(mselfcal(pars))
+		for T in THREADS:
+			print "Starting ", T
+			T.start()
+		
+		for T in THREADS:
+			print "Joining ", T
+			T.join()
+			time.sleep(1)
+
+		print "DONE."
