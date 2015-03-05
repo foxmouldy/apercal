@@ -70,8 +70,8 @@ def getradec(infile):
 	prthd = mirexec.TaskPrintHead()
 	prthd.in_ = infile
 	p = prthd.snarf()
-	rastring = [s for s in p[0] if "RA---SIN" in s]
-	decstring = [s for s in p[0] if "DEC--SIN" in s]
+	rastring = [s for s in p[0] if "RA---" in s]
+	decstring = [s for s in p[0] if "DEC--" in s]
 	print rastring
 	#ra0 = p[0][12][15:32].replace(' ','')
 	ra0 = rastring[0][15:32].replace(' ','')
