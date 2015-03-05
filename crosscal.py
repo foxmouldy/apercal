@@ -1,3 +1,12 @@
+#!/usr/bin/python
+'''
+Bradley Frank, ASTRON 2015
+crosscal.py
+This script automates the commonly used method for cross-calibrating WSRT data. 
+Usage:
+python crosscal.py
+You need to have a config file to specify all the inputs. 
+'''
 #import mirexec
 from apercal import acos
 from apercal import mirexecb as mirexec
@@ -15,6 +24,9 @@ parser = OptionParser(usage=usage);
 
 parser.add_option("--config", "-c", type='string', dest='config', default="None", 
 	help = "Config for input values [None]")
+parser.add_option("--pgflag", "-p", action="store_true", dest="dopgflag", default=False,
+	help = "Use PGFLAG for automated flagging [False]")
+
 (options, args) = parser.parse_args();
 
 class Bunch: 
@@ -61,9 +73,6 @@ def pgflag(vis, flagpar):
 		params.log = vis+'.pgflag.txt' 
 	pgflag = mirexec.TaskPGFlag()
 	pgflag.vis = vis
-	#if params.select!='':
-	#	pgflag.select = params.select
-	#	print 'blank'
 	pgflag.stokes = params.stokes
 	pgflag.flagpar = flagpar
 	pgflag.options = 'nodisp'
@@ -82,16 +91,6 @@ def mfcal(v):
 	mfcal.edge = params.edge
 	print mfcal.__dict__
  	o = mfcal.snarf()
-
-def gpcopy(v):
-	gpcopy = mirexec.TaskGPCopy();
-	for i in range(len(v)-1):
-		gpcopy.vis = v[0];
-		gpcopy.out = v[i];
-		gpcopy.options = 'nopass';
-		gpcopy.merge = 'nopass';
-		o = gpcopy.snarf();
-		print o
 
 def cal2srcs(cal, srcs):
 	'''
@@ -153,9 +152,9 @@ if __name__=="__main__":
 	print "\n"
 	print "\n"
 	for c in params.cals.split(","):
-		for p in params.flagpar.split(";"):
-			mfcal(c+".UV")
-			pgflag(c+".UV", p)
+		if options.pgflag!=False:
+			#NOTE: Only do PGFLAG if activated from command line.
+			pgflag(c+".UV", params.pgflag)
 		mfcal(c+".UV")
 	cal0 = params.cals.split(",")[0]
 
@@ -164,6 +163,8 @@ if __name__=="__main__":
 	print "\n"
 	for s in params.srcs.split(","):
 		cal2srcs(cal0+".UV", s+".UV")
-		pgflag(s+".UV", params.flagpar)
+		#NOTE: Only do PGFLAG if activated from command line.
+		if options.pgflag!=False:
+			pgflag(s+".UV", params.flagpar)
 	for s in params.srcs.split(","):
 		mergensplit(s+".UV", src=s, out=s+".UVc")
