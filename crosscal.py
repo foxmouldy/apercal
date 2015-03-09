@@ -28,6 +28,9 @@ parser.add_option("--pgflag", "-p", action="store_true", dest="pgflag", default=
 	help = "Use PGFLAG for automated flagging [False]")
 parser.add_option("--commands", dest="commands", default="filer,calr", 
 	help = "Calibration steps to make [filer,calr]")
+parser.add_option("--doms2uvfits", action='store_true', dest='doms2uvfits', default=False,
+	help = "Do ms2uvfits? [False]")
+
 
 (options, args) = parser.parse_args();
 
@@ -91,6 +94,8 @@ def mfcal(v):
 	mfcal.refant = params.refant
 	mfcal.interval = 100000
 	mfcal.edge = params.edge
+	if len(params.select)>2:
+		mfcal.select = params.select
 	print mfcal.__dict__
  	o = mfcal.snarf()
 
@@ -126,6 +131,7 @@ def mergensplit(vis, src, out=None):
 		uvcat.out = out
 	else:
 		uvcat.out = src+'.UV'
+	os.system("rm -r "+uvcat.out)
 	o = uvcat.snarf();
 
 def get_params(configfile):
@@ -138,7 +144,8 @@ def get_params(configfile):
 
 def filer(params):
 	# Import the files and then do the Tsys calibration
-	ms2uvfits(params.msfiles)
+	if options.doms2uvfits!=False:
+		ms2uvfits(params.msfiles)
 	for m in params.msfiles.split(','):
 		infits(m.upper().replace('.MS', '.UVF'))
 	for c in params.cals.split(","):
@@ -183,41 +190,10 @@ def splitr(params):
 		os.system(cmd)
 
 if __name__=="__main__":
-	
 	# Get the parameters
 	params = get_params(options.config)
 	for c in options.commands.split(','):
 		exec(c+"(params)")
-	# Import the files and then do the Tsys calibration
+	print "\n"
+	print "\n"
 
-#	ms2uvfits(params.msfiles)
-#	for m in params.msfiles.split(','):
-#		infits(m.upper().replace('.MS', '.UVF'))
-#	for c in params.cals.split(","):
-#		mergensplit(params.msfiles.replace(".MS",".UV"), c)
-#	for s in params.srcs.split(","):
-#		mergensplit(params.msfiles.replace(".MS",".UV"), s)
-#	
-	# Do Calcals
-	print "\n"
-	print "\n"
-	
-#		
-#	for c in params.cals.split(","):
-#		if options.pgflag!=False:
-#			#NOTE: Only do PGFLAG if activated from command line.
-#			pgflag(c+".UV", params.pgflag)
-#		mfcal(c+".UV")
-#	
-#	cal0 = params.cals.split(",")[0]
-#
-#	# Copy it over to the Sources
-#	print "\n"
-#	print "\n"
-#	for s in params.srcs.split(","):
-#		cal2srcs(cal0+".UV", s+".UV")
-#		#NOTE: Only do PGFLAG if activated from command line.
-#		if options.pgflag!=False:
-#			pgflag(s+".UV", params.flagpar)
-#	for s in params.srcs.split(","):
-#		mergensplit(s+".UV", src=s, out=s+".UVc")
