@@ -33,6 +33,8 @@ parser.add_option('--par', '-p', type='string', dest='par', default=None,
 	help = 'Overwrite a single parameter: --par <par>:<value>;<par2>:<value2>')
 parser.add_option('--cleanup', action='store_true', dest='cleanup', default=False, 
 	help = "Remove the old gains and start from scratch [False]")
+parser.add_option("--wgains", '-w', action='store_true', dest='wgains', default=False,
+	help = "Write the final gains to the visibility [False]")
 (options, args) = parser.parse_args();
 
 if __name__=="__main__":
@@ -129,10 +131,12 @@ def selfcal(params):
 def wgains(params):
 	uvcat = mirexec.TaskUVCat()
 	uvcat.vis = params.vis
-	uvcat.out = '.temp'
+	uvcat.out = params.vis+'_w'
+	os.system("rm -r "+uvcat.out)
 	tout = uvcat.snarf()
-	os.system('rm -r '+params.vis)
-	os.system('mv .temp '+params.vis)
+	params.vis = params.vis+'_w'
+	#os.system('rm -r '+params.vis)
+	#os.system('mv .temp '+params.vis)
 
 def get_cutoff(cutoff=1e-3):
 	'''
@@ -143,7 +147,7 @@ def get_cutoff(cutoff=1e-3):
 	obsrms.jyperk = 8.
 	obsrms.freq = 1.4 # Does not depend strongly on frequency
 	obsrms.theta = 12. # Maximum resolution in arcseconds
-	obsrms.nants = 11
+	obsrms.nants = params.nants
 	obsrms.bw = params.bw # In MHz! 
 	obsrms.inttime = params.inttime
 	obsrms.antdiam = 25.
@@ -300,6 +304,7 @@ for k in range(0,len(visfiles)):
 	params.vis = visfiles[k]
 	if options.cleanup!=False:
 		os.system("rm -r "+params.vis+"/gains")
+		os.system("rm -r "+params.tag+"_*")
 	if len(visfiles)>1:
 		params.tag = visfiles[k]
 	print "SELFCAL on ", params.vis, " -> ", params.tag
@@ -337,8 +342,9 @@ for k in range(0,len(visfiles)):
 	else:
 		nloops = int(params.nloops)
 	
-	print "Running ", nloops, " SelfCal Iterations."
-	if nloops!=0:
+	if nloops!=0 and options.lsm==False:
+		
+		print "Running ", nloops, " SelfCal Iterations."
 		for i in range(0, nloops):
 			print 'Selfcal Cycle '+str(i+1)
 			iteri(i+1)
@@ -354,5 +360,7 @@ for k in range(0,len(visfiles)):
 		params.tag+='_asc'
 		iteri(i='')
 		image_cycle(j=i+1)
+		if options.wgains!=False:
+			wgains(params)
 	
 print "DONE."

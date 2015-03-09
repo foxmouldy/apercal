@@ -142,7 +142,7 @@ def get_cutoff(params, cutoff=1e-3):
 	obsrms.jyperk = 8.
 	obsrms.freq = 1.4 # Does not depend strongly on frequency
 	obsrms.theta = 12. # Maximum resolution in arcseconds
-	obsrms.nants = 11
+	obsrms.nants = params.nants
 	obsrms.bw = params.bw # In MHz! 
 	obsrms.inttime = params.inttime
 	obsrms.antdiam = 25.
@@ -400,6 +400,7 @@ if __name__=="__main__":
 		for v in visfiles.split(','):
 			if options.cleanup!=False:
 				os.system("rm -r "+v+"/gains")
+				os.system("rm -r "+v+"_*")
 			print "Running Thread ", nt, " for ", v
 			nt+=1
 			pars = get_params(configfile=options.config)
