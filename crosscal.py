@@ -26,7 +26,7 @@ parser.add_option("--config", "-c", type='string', dest='config', default="None"
 	help = "Config for input values [None]")
 parser.add_option("--pgflag", "-p", action="store_true", dest="pgflag", default=False,
 	help = "Use PGFLAG for automated flagging [False]")
-parser.add_option("--commands", dest="commands", default="filer,calr", 
+parser.add_option("--commands", dest="commands", default="filer,mns,calr,splitr", 
 	help = "Calibration steps to make [filer,calr]")
 parser.add_option("--doms2uvfits", action='store_true', dest='doms2uvfits', default=False,
 	help = "Do ms2uvfits? [False]")
@@ -148,6 +148,8 @@ def filer(params):
 		ms2uvfits(params.msfiles)
 	for m in params.msfiles.split(','):
 		infits(m.upper().replace('.MS', '.UVF'))
+
+def mns(params):
 	for c in params.cals.split(","):
 		mergensplit(params.msfiles.replace(".MS",".UV"), c)
 	for s in params.srcs.split(","):
