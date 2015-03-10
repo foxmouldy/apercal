@@ -152,6 +152,8 @@ def get_cutoff(cutoff=1e-3):
 	obsrms.inttime = params.inttime
 	obsrms.antdiam = 25.
 	rmsstr = obsrms.snarf()
+	print "OBSRMS Output"
+	print ("\n".join(map(str, rmsstr[0])))
 	rms = rmsstr[0][3].split(";")[0].split(":")[1].split(" ")[-2]
 	noise = float(params.nsigma)*float(rms)/1000.
 	if cutoff > noise:
