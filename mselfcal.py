@@ -36,6 +36,8 @@ parser.add_option('--par', '-p', type='string', dest='par', default=None,
 	help = 'Overwrite a single parameter: --par <par>:<value>;<par2>:<value2>')
 parser.add_option("--cleanup", action='store_true', dest='cleanup', default=False,
 	help = 'Remove old gains and start from scratch [False]')
+parser.add_option("--imall", action='store_true', dest='imall', default=False,
+	help = "Make a wide-band image with all visibilities and exit [False]")
 (options, args) = parser.parse_args()	
 
 class Bunch:
@@ -177,6 +179,7 @@ def image_cycle(params, j=1):
 	params.clip = cmmax/(100.*j)
 	restor(params, mode='residual')
 
+
 def bdsm(params):
 	'''
 	This runs PyBDSM on the image to make a mask from the Gaussian output from the source
@@ -266,40 +269,6 @@ def get_params(configfile=None):
 		tsys = 30., 
 		bw = 20.)
 		return params
-
-
-# NOTE: Setup the parameters
-##if options.config!=None:
-#	#NOTE: Get the parameters from the file
-#	params = get_params(options.config)
-#else:
-#	#NOTE: Setup a default set of parameters. 
-#	params = Bunch(vis=options.vis, 
-#		select='-uvrange(0,1)', 
-#		tag = 'sc', 
-#		map='map_temp', 
-#		beam='beam_temp', 
-#		mask = 'mask_temp', 
-#		model='model_temp', 
-#		image = 'image_temp', 
-#		residual = 'residual_temp', 
-#		robust='-2.0',
-#		lsm='lsm_temp', 
-#		line='channel,900,1,1,1', 
-#		sopts='mfs,phase', 
-#		iopts='mfs,double', 
-#		interval=5,
-#		fwhm='', 
-#		cutoff=1e-2, 
-#		clip='', 
-#		nloops=None, 
-#		nsigma=3,
-#		c0=2.5,
-#		dc=3.0, 
-#		inttime=1., 
-#		tsys = 30., 
-#		bw = 20.)
-
 # NOTE: Command line parameters **always** trumps file parameters.
 if options.par!=None:
 	pars = options.par.split(';')
@@ -395,6 +364,20 @@ if __name__=="__main__":
 		parser.print_help()
 		dummy = sys.exit(0)
 	else:
+		if options.imall!=False:
+			print "Making Wide Band Image..."
+			params0.line=""
+			#NOTE: Increase the CLEAN depth by the nominal increase in sensitivity.
+			params0.dc = float(params0.dc) * pl.sqrt(8.)
+			#NOTE: Increase the BW
+			params0.bw = float(params0.bw) * 8.
+			for i in range(0,options.nloops):
+				print "Loop=", str(i)
+				iteri(params0, i=i+1)
+				image_cycle(params0, j=i+1)
+			print "Completed Wide Band Image"
+			sys.exit(0)
+
 		options.nloops = int(options.nloops)
 		THREADS = []
 		for v in visfiles.split(','):
