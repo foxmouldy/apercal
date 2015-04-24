@@ -33,7 +33,7 @@ parser.add_option('--bdsm', '-b', action='store_true', dest='bdsm', default=Fals
 parser.add_option('--mkim0', '-m', action='store_true', dest='mkim0', default=False, 
 	help = 'MFS-Image the VIS and exit [False].')
 parser.add_option('--par', '-p', type='string', dest='par', default=None, 
-	help = 'Overwrite a single parameter: --par <par>:<value>,<par2>:<value2>')
+	help = 'Overwrite a single parameter: --par <par>:<value>;<par2>:<value2>')
 parser.add_option("--cleanup", action='store_true', dest='cleanup', default=False,
 	help = 'Remove old gains and start from scratch [False]')
 parser.add_option("--imall", action='store_true', dest='imall', default=False,
@@ -351,11 +351,10 @@ class mselfcal(threading.Thread):
 nt = 0
 
 params0 = get_params(configfile=options.config)
-
 # NOTE: Command line parameters **always** trumps file parameters.
 if options.par!=None:
-	print "Setting up Custom Params"
-	pars = options.par.split(',')
+	print "Setting up Custom Params..."
+	pars = options.par.split(';')
 	for par in pars:
 		p = par.split(':')	
 		setattr(params0, p[0], p[1])
@@ -375,7 +374,7 @@ if __name__=="__main__":
 			#NOTE: Increase the BW
 			params0.bw = float(params0.bw) * 8.
 			for i in range(0,options.nloops):
-				print "Loop =", str(i)
+				print "Loop=", str(i)
 				iteri(params0, i=i+1)
 				image_cycle(params0, j=i+1)
 			print "Completed Wide Band Image"
