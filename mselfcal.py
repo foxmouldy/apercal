@@ -373,7 +373,7 @@ if __name__=="__main__":
 			params0.dc = float(params0.dc) * pl.sqrt(8.)
 			#NOTE: Increase the BW
 			params0.bw = float(params0.bw) * 8.
-			for i in range(0,options.nloops):
+			for i in range(0,int(params0.nloops)):
 				print "Loop=", str(i)
 				iteri(params0, i=i+1)
 				image_cycle(params0, j=i+1)
