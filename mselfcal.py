@@ -2,12 +2,12 @@ import mirexec
 import pylab as pl
 from optparse import OptionParser
 import sys
-import os
 from ConfigParser import SafeConfigParser
 import imp
 from apercal import mirexecb 
 import threading 
 import time
+import subprocess
 
 #Check if PyBDSM is installed
 try:
@@ -55,13 +55,23 @@ def getimmax(image):
 	imunits = imstats[0][4];
 	return immax, imunits
 
+def shrun(cmd):
+	'''
+	shrun: shell run - helper function to run commands on the shell. 
+	'''
+	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, 
+                           stderr=subprocess.PIPE, shell=True)
+	out, err = proc.communicate()
+	# NOTE: Returns the STD output. 
+	return out, err
+
 def invertr(params):
 	invert = mirexec.TaskInvert()
 	invert.vis = params.vis
 	invert.select = params.select
 	invert.line = params.line
-	os.system('rm -r '+params.map)
-	os.system('rm -r '+params.beam)
+	shrun('rm -r '+params.map)
+	shrun('rm -r '+params.beam)
 	invert.map = params.map
 	invert.beam = params.beam
 	invert.options = params.iopts 
@@ -85,7 +95,7 @@ def clean(params):
 		clean.niters = 100000
 	else:
 		clean.niters = 1000
-	os.system('rm -r '+params.model)
+	shrun('rm -r '+params.model)
 	clean.out = params.model 
 	tout = clean.snarf()
 	#print ("\n".join(map(str, tout[0])))
@@ -103,11 +113,11 @@ def restor(params, mode='clean'):
 		restor.out = params.image
 		restor.mode = 'clean'
 
-	os.system('rm -r '+restor.out)
+	shrun('rm -r '+restor.out)
 	tout = restor.snarf()
 	
 def maths(image, cutoff, mask):
-	os.system('rm -r '+mask)
+	shrun('rm -r '+mask)
 	maths = mirexec.TaskMaths()
 	maths.exp = image
 	maths.mask = image+".gt."+str(cutoff)
@@ -132,8 +142,8 @@ def wgains(params):
 	uvcat.vis = params.vis
 	uvcat.out = '.temp'
 	tout = uvcat.snarf()
-	os.system('rm -r '+params.vis)
-	os.system('mv .temp '+params.vis)
+	shrun('rm -r '+params.vis)
+	shrun('mv .temp '+params.vis)
 
 def get_cutoff(params, cutoff=1e-3):
 	'''
@@ -151,9 +161,16 @@ def get_cutoff(params, cutoff=1e-3):
 	rmsstr = obsrms.snarf()
 	rms = rmsstr[0][3].split(";")[0].split(":")[1].split(" ")[-2]
 	noise = float(params.nsigma)*float(rms)/1000.
+	# NOTE: Breakpoints to check your noise. 
+	#print "Noise = ", noise
+	#print "cutoff = ", cutoff
 	if cutoff > noise:
+		# NOTE: More Breakpoints. 
+		#print "cutoff > noise"
 		return cutoff
 	else:
+		# NOTE: More Breakpoints. 
+		#print "cutoff < noise"
 		return noise
 
 def image_cycle(params, j=1):
@@ -211,7 +228,7 @@ def bdsm(params):
 
 def lsm(params):
 	c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
-	os.system(c)
+	shrun(c)
 	#print 'Made LSM'
 	tout = selfcal(params) 
 	#print 'Selfcal Output Using LSM:'
@@ -384,8 +401,8 @@ if __name__=="__main__":
 		THREADS = []
 		for v in visfiles.split(','):
 			if options.cleanup!=False:
-				os.system("rm -r "+v+"/gains")
-				os.system("rm -r "+v+"_*")
+				shrun("rm -r "+v+"/gains")
+				shrun("rm -r "+v+"_*")
 			print "Running Thread ", nt, " for ", v
 			nt+=1
 			pars = get_params(configfile=options.config)
@@ -397,8 +414,8 @@ if __name__=="__main__":
 			T.start()
 		
 		for T in THREADS:
+			time.sleep(1)
 			print "Joining ", T
 			T.join()
-			time.sleep(1)
 
 		print "DONE."
