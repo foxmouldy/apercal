@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/python
 # Bradley Frank, ASTRON, 2015
 import mirexec
 import pylab as pl
