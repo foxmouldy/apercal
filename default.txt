@@ -1,0 +1,50 @@
+[observation]
+report: Example Report. Remember to indent information. 
+	No RT2,4,5(Apertif)
+	RT0 no correlated data due to dec position error.
+	7y7y: B0 bad bandpass shape
+	3x3x: B1 bad bandpass shape
+	3x3x: B7 bad bandpass shape
+	8x8x: B6 bad bandpass shape
+	cycy: B3 bad bandpass shape
+
+[crosscal]
+msfiles = 11400815_S0_T0.MS,11400817_S0_T0.MS,11400817_S0_T2.MS,11400817_S0_T4.MS
+msfiles_help = msfiles contains the filenames for your data. Even if your data is in UVF format,
+	input them as *.MS in msfiles, since crosscal.py and mselfcal.py will rename this
+	appropriately. 
+cals = 3C147,3C286,3C48,3C454.3
+cals_help = cals contains the names of the calibrators, the first calibrator will be the one from
+	which solutions are copied. 
+srcs = acf2g4p1,acf2g4p2,acf2g4p3,acf2g4p4
+srcs_help = srcs contains the names of the pointings/science sources.
+flags = an(1),an(3),an(5),an(6),shadow(25),auto
+refant = 2
+flagpar = 6,2,2,2,5,3
+select = -auto
+edge = 7,7
+log = log.txt
+stokes = qq
+
+[selfcal]
+vis = acf2g4p4.1311,acf2g4p4.1330,acf2g4p4.1350,acf2g4p4.1370,acf2g4p4.1392,acf2g4p4.1410,acf2g4p4.1432,acf2g4p4.1450
+vis_help = vis contains the filenames of mselfcal.py will do selfcal on all files in vis. 
+tag = acf2g4p4
+tag_help = tag keyword is used for the final image
+interval = 2
+select = -auto,-uvrange(0,0.5)
+nloops = 2
+robust = -2.0
+line = channel,50,7,1,1
+sopts = mfs,phase
+iopts = mfs,double
+fwhm = ''
+clip = 1e-4
+cutoff = 1e-2
+c0 = 3.
+dc = 3.
+nsigma = 3.
+inttime = 180.
+tsys = 30.
+bw = 20
+nants= 10.

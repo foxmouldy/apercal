@@ -30,7 +30,8 @@ parser.add_option("--commands", dest="commands", default="filer,mns,calr,splitr"
 	help = "Calibration steps to make [filer,calr]")
 parser.add_option("--doms2uvfits", action='store_true', dest='doms2uvfits', default=False,
 	help = "Do ms2uvfits? [False]")
-
+parser.add_option("--mkconf", action="store_true", dest="mkconf", default=False, 
+	help = "Make a new config file? [False]")
 
 (options, args) = parser.parse_args();
 
@@ -193,6 +194,19 @@ def splitr(params):
 
 if __name__=="__main__":
 	# Get the parameters
+	if options.mkconf!=False:
+		# Get the directory of the script:
+		sdir = os.path.dirname(os.path.realpath(__file__))
+		config_parser = SafeConfigParser()
+		config_parser.read(sdir+"/default.txt")
+		cdir = os.getcwd()
+		with open(cdir+'/default.txt', 'w') as newfile:
+			config_parser.write(newfile)
+		newfile.close()
+		print "Made default.txt"
+		print "Edit (and rename) default.txt before proceeding."
+		sys.exit(1)
+
 	params = get_params(options.config)
 	for c in options.commands.split(','):
 		exec(c+"(params)")
