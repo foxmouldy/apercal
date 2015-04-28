@@ -1,3 +1,5 @@
+#!/usr/local/bin/python
+# Bradley Frank, ASTRON, 2015
 import mirexec
 import pylab as pl
 from optparse import OptionParser
