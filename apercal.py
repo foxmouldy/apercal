@@ -2,32 +2,22 @@ import mirexecb
 import acos
 import acim
 import plot
-import uvpltr
-#import re
-#import sys 
-#import pylab as pl
-#import os 
-#from optparse import OptionParser 
-#import calib
-#
-#usage = "usage: %prog options"
-#parser = OptionParser(usage=usage);
-#
-#parser.add_option("--settings", "-s", type = 'string', dest = 'sfile', default=None,
-#	help = 'Settings file');
-#parser.add_option("--calls", type='string', dest = 'calls', default=None,
-#help = 'Custom pipeline (input each block in sequence)')
-#
-#
-#(options, args) = parser.parse_args();
-#
-#if len(sys.argv)==1:
-#	parser.print_help();
-#	dummy = sys.exit(0);
-#
-#global U;
-#
-#U = calib.read_inps(options.sfile);
-#if options.calls!=None:
-#	for c in options.calls.split(','):
-#		exec('calib.'+c+'(U)');
+import mirplot
+import crosscal
+#import mselfcal
+
+def get_source_names(vis=None):
+	if vis!=None:
+		uvindex = mirexecb.TaskUVIndex ()
+		uvindex.vis = vis
+		u = uvindex.snarf ()
+		i = [i for i in range(0,len(u[0])) if "pointing" in u[0][i]]
+		N = len(u[0])
+		s_raw = u[0][int(i[0]+2):N-2]
+		sources = []
+		for s in s_raw:
+			sources.append(s.replace('  ', ' ').split(' ')[0])
+		return sources
+	else:
+		print "get_source_names needs a vis!"
+		

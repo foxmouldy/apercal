@@ -19,29 +19,38 @@ global options
 global args
 global params
 
-usage = "usage: %prog options"
-parser = OptionParser(usage=usage);
-
-parser.add_option("--config", "-c", type='string', dest='config', default="None", 
-	help = "Config for input values [None]")
-parser.add_option("--pgflag", "-p", action="store_true", dest="pgflag", default=False,
-	help = "Use PGFLAG for automated flagging [False]")
-parser.add_option("--commands", dest="commands", default="filer,mns,calr,splitr", 
-	help = "Calibration steps to make [filer,calr]")
-parser.add_option("--doms2uvfits", action='store_true', dest='doms2uvfits', default=False,
-	help = "Do ms2uvfits? [False]")
-parser.add_option("--mkconf", action="store_true", dest="mkconf", default=False, 
-	help = "Make a new config file? [False]")
-
-(options, args) = parser.parse_args();
+if __name__=="__main__":
+	
+	usage = "usage: %prog options"
+	parser = OptionParser(usage=usage);
+	
+	parser.add_option("--config", "-c", type='string', dest='config', default="None", 
+		help = "Config for input values [None]")
+	parser.add_option("--pgflag", "-p", action="store_true", dest="pgflag", default=False,
+		help = "Use PGFLAG for automated flagging [False]")
+	parser.add_option("--commands", dest="commands", default="filer,mns,calr,splitr", 
+		help = "Calibration steps to make [filer,calr]")
+	parser.add_option("--doms2uvfits", action='store_true', dest='doms2uvfits', default=False,
+		help = "Do ms2uvfits? [False]")
+	parser.add_option("--mkconf", action="store_true", dest="mkconf", default=False, 
+		help = "Make a new config file? [False]")
+	
+	(options, args) = parser.parse_args();
+	if len(sys.argv)==1:
+		parser.print_help()
+		dummy = sys.exit(0)
 
 class Bunch: 
 	def __init__(self, **kwds): 
 		self.__dict__.update(kwds)
+	def inp(self, **kwds):
+		'''
+		Class to Print the values of inp
+		'''
+        	for d in dir(self):
+            		if d[0:2]!="__" and d!='inp':
+		                print d, " : ", getattr(self, d)
 
-if len(sys.argv)==1:
-	parser.print_help();
-	dummy = sys.exit(0);
 
 def ms2uvfits(msfiles):
 	for m in msfiles.split(','):
@@ -176,9 +185,9 @@ def calr(params):
 		mergensplit(s+".UV", src=s, out=s+".UVc")
 
 def splitr(params):
-	"""
+	'''	
 	Splits each corrected visfile into subbands.
-	"""
+	'''
 	for s in params.srcs.split(','):
 		print "Splitting ", s, " into subbands"
 		cmd = "uvsplit vis="+s+".UVc"
