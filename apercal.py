@@ -7,6 +7,7 @@ import crosscal2
 from ConfigParser import SafeConfigParser
 import subprocess
 import mynormalize
+import pylab as pl
 
 #import mselfcal
 
@@ -56,32 +57,35 @@ class settings:
 		parser = self.parser
 		for k in kwds:
 			parser.set(section, k, kwds[k])
-		self.inp(section=section)
-	def inp(self, section=None):
+		self.show(section=section)
+		self.save()
+
+	def show(self, section=None):
 		'''
-		settings.inp(section=None)
+		settings.show(section=None)
 		Output the settings, by section if necessary.
 		'''
 		parser = self.parser
 		if section!=None:
-			print "[", section , "]"
+			print "["+section+"]"
 			for p in parser.items(section):
 				print p[0], " : ", p[1]
 			print "\n"
-			print "### Don't forget to save\n"
 		else:
 			for s in parser.sections ():
-				print "[", s, "]"
+				print "["+s+"]"
 				for p in parser.items(s):
 					print p[0], " : ", p[1]
 				print "\n"	
-			print "### Don't forget to save\n"
-	def get(self, section, keyword):
+	def get(self, section, keyword=None):
 		parser = self.parser
-		if len(parser.get(section, keyword).split(','))>1:
-			return parser.get(section, keyword).split(',')
+		if keyword!=None:
+			if len(parser.get(section, keyword).split(','))>1:
+				return parser.get(section, keyword).split(',')
+			else:
+				return parser.get(section, keyword)
 		else:
-			return parser.get(section, keyword)
+			return get_params(parser, section)
 
 	def save(self):
 		'''
@@ -96,3 +100,17 @@ def get_params(config_parser, section):
 	for p in config_parser.items(section):
 		setattr(params, p[0], p[1])
 	return params
+
+
+def ms2uvfits(inms=None, outuvf=None):
+	'''
+	ms2uvfits(inms=None, outuvf=None)
+	Utility to convert inms to outuvf in the same directory. If outuvf is not specified, then
+	inms is used with .MS replaced with .UVF.
+	'''
+	if outuvf==None:
+		outuvf = inms.replace(".MS", ".UVF")
+	cmd = "ms2uvfits ms="+inms+" fitsfile="+outuvf+" writesyscal=T multisource=T combinespw=T"
+	shrun(cmd)	
+	print inms, "--> ms2uvfits --> ", outuvf
+

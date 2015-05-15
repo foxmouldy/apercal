@@ -41,7 +41,6 @@ def vidshow(U=None, tempdir="/home/frank/", vidname="some_vid", r=2):
 		video_tag = '<video controls alt="test" src="data:video/x-m4v;base64,{0}">'.format(video_encoded)
 		return HTML(data=video_tag)
 
-
 def vembed(video=None):
 	'''
 	vembed(video=None) - Video Embedder for IPython Notebooks. Uses the HTML module to embed an
@@ -73,24 +72,8 @@ def uvplt(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
 	                setattr(uvplt, k, kwargs[k])
 	        uvplt.device="/png"
 	        U = uvplt.snarf()
-
-		# 2. Get and rename the pngs:
-		pngs = []
-
-		shrun("rm "+tempdir+"*png*")
-		for i in range(0,len(U[1])):
-			p = U[1][i].replace("PGPLOT /png: writing new file as ","")
-			pngs.append(U[1][i].replace("PGPLOT /png: writing new file as ",""))
-			shrun("mv "+p+" "+tempdir+"/pgplot"+str(i+2)+".png")
-		shrun("mv pgplot.png "+tempdir+ "/pgplot1.png")
-		
-		videcon(tempdir+"/uvplt.m4v", tempdir=tempdir, r=r)
-		shrun("rm "+tempdir+"*png*")	
-		#3: Plot the data
-		video = io.open(tempdir+"uvplt.m4v", "rb").read()
-		video_encoded = b64encode(video)
-		video_tag = '<video controls alt="test" src="data:video/x-m4v;base64,{0}">'.format(video_encoded)
-		return HTML(data=video_tag)
+		HTML = vidshow(U=U, tempdir=tempdir, vidname="uvplt.m4v", r=r)
+		return HTML
 	else:
 		print "Error: vis argument has to be explicitly specified"
 
@@ -112,24 +95,8 @@ def uvspec(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
 	                setattr(uvspec, k, kwargs[k])
 	        uvspec.device="/png"
 	        U = uvspec.snarf()
-
-		# 2. Get and rename the pngs:
-		pngs = []
-
-		shrun("rm "+tempdir+"*png*")
-		for i in range(0,len(U[1])):
-			p = U[1][i].replace("PGPLOT /png: writing new file as ","")
-			pngs.append(U[1][i].replace("PGPLOT /png: writing new file as ",""))
-			shrun("mv "+p+" "+tempdir+"/pgplot"+str(i+2)+".png")
-		shrun("mv pgplot.png "+tempdir+ "/pgplot1.png")
-		
-		videcon(tempdir+"/uvspec.m4v", tempdir=tempdir, r=r)
-		shrun("rm "+tempdir+"*png*")	
-		#3: Plot the data
-		video = io.open(tempdir+"uvspec.m4v", "rb").read()
-		video_encoded = b64encode(video)
-		video_tag = '<video controls alt="test" src="data:video/x-m4v;base64,{0}">'.format(video_encoded)
-		return HTML(data=video_tag)
+		HTML = vidshow(U=U, tempdir=tempdir, vidname="uvspec.m4v", r=r)
+		return HTML
 	else:
 		print "Error: vis argument has to be explicitly specified"
 

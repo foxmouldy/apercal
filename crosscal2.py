@@ -118,17 +118,16 @@ def pgflag(vis, flagpar):
 	tout = pgflag.snarf();
 	acos.taskout(pgflag, tout, params.log)
 
-def mfcal(vis, settings):
-	params = apercal.get_params(settings, 'mfcal')
+def mfcal(vis, params=None):
 	mfcal = mirexec.TaskMfCal()
-	mfcal.vis = vis	
 	mfcal.refant = params.refant
 	mfcal.interval = float(params.interval)
 	mfcal.edge = params.edge
 	if len(params.select)>2:
 		mfcal.select = params.select
-	#o = mfcal.snarf ()
-	print mfcal
+	mfcal.vis = vis
+	o = mfcal.snarf ()
+	return o
 
 def calcals(parfile):
 	'''
