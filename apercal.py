@@ -1,4 +1,5 @@
-import mirexecb 
+import mirexecb
+import mirexecb as mirexec
 import acos
 import acim
 import plot
@@ -10,6 +11,25 @@ import mynormalize
 import pylab as pl
 
 #import mselfcal
+
+def mirrun(task=None, **kwargs):
+	'''
+	mirrun - Miriad Task Runner
+	Usage: mirrun(task='sometask', arg1=val1, arg2=val2)
+	Example: mirrun(task='invert', vis='/home/frank/test.uv/', options='mfs,double', ...)
+	Each argument is passed to the task through the use of the keywords. 
+	'''
+	if task!=None:
+		argstr = " "
+		for k in kwargs.keys():
+			argstr += k + '=' + kwargs[k]+ ' '
+		cmd = task + argstr
+		print cmd
+		out, err = shrun(cmd)
+		print out, err
+		return out, err
+	else:
+		print "Usage = mirrun(task='sometask', arg1=val1, arg2=val2...)"
 
 def shrun(cmd):
 	'''
@@ -23,6 +43,11 @@ def shrun(cmd):
 	return out, err
 
 def get_source_names(vis=None):
+	'''
+	get_source_names (vis=None)
+	Helper function that uses the MIRIAD task UVINDEX to grab the name of the 
+	sources from a MIRIAD visibility file. 
+	'''
 	if vis!=None:
 		uvindex = mirexecb.TaskUVIndex ()
 		uvindex.vis = vis
@@ -51,7 +76,7 @@ class settings:
 		self.parser.read(self.filename)
 	def set(self, section, **kwds):
 		'''
-		settings.set(settings=None, keyword1=value1, keyword2=value2)
+		settings.set(section, keyword1=value1, keyword2=value2)
 		Change settings using this method. 
 		'''
 		parser = self.parser
@@ -94,6 +119,11 @@ class settings:
 		'''
 		parser = self.parser
 		parser.write(open(self.filename, 'w'))
+	
+	def full_path(self):
+		'''
+		settings.full_path(
+		'''
 
 def get_params(config_parser, section):
 	params = Bunch()
@@ -114,3 +144,125 @@ def ms2uvfits(inms=None, outuvf=None):
 	shrun(cmd)	
 	print inms, "--> ms2uvfits --> ", outuvf
 
+def iteri(params, i):
+	params.map = params.vis+'_map'+str(i)
+	params.beam = params.vis+'_beam'+str(i)
+	params.mask = params.vis+'_mask'+str(i)
+	params.model = params.vis+'_model'+str(i)
+	params.image = params.vis+'_image'+str(i)
+	params.lsm = params.vis+'_lsm'+str(i)
+	params.residual = params.vis+'_residual'+str(i)
+	return params
+
+def mkim(settings0):
+	'''
+	Makes the 0th image.
+	'''
+	#print "Making Initial Image"
+	params = settings0.get('image')
+	params.vis = settings0.get('data', 'working') + params.vis
+	params = iteri(params, 0)
+	invout = invertr(params)
+	print "Done INVERT"
+	immax, imunits = getimmax(params.map)
+	maths(params.map, immax/float(params.c0), params.mask)
+	print "Done MATHS"
+	params.cutoff = get_cutoff(settings0, cutoff=immax/float(params.c0))
+	clean(params)
+	print "Done CLEAN"
+	restor(params)
+	print "Done RESTOR"
+
+def getimmax(image):
+	imstat = mirexec.TaskImStat()
+	imstat.in_ = image;
+	imstats = imstat.snarf();
+	immax = float(imstats[0][10][51:61]);
+	imunits = imstats[0][4];
+	return immax, imunits
+
+def get_cutoff(settings0, cutoff=1e-3):
+	'''
+	This uses OBSRMS to calculate the theoretical RMS in the image.
+	'''
+	params = settings0.get('obsrms')
+	obsrms = mirexecb.TaskObsRMS()
+	obsrms.tsys = params.tsys
+	obsrms.jyperk = 8.
+	obsrms.freq = 1.4 # Does not depend strongly on frequency
+	obsrms.theta = 12. # Maximum resolution in arcseconds
+	obsrms.nants = params.nants
+	obsrms.bw = params.bw # In MHz! 
+	obsrms.inttime = params.inttime
+	obsrms.antdiam = 25.
+	rmsstr = obsrms.snarf()
+	rms = rmsstr[0][3].split(";")[0].split(":")[1].split(" ")[-2]
+	noise = float(params.nsigma)*float(rms)/1000.
+	# NOTE: Breakpoints to check your noise. 
+	#print "Noise = ", noise
+	#print "cutoff = ", cutoff
+	if cutoff > noise:
+		# NOTE: More Breakpoints. 
+		#print "cutoff > noise"
+		return cutoff
+	else:
+		# NOTE: More Breakpoints. 
+		#print "cutoff < noise"
+		return noise
+
+def invertr(params):
+	invert = mirexec.TaskInvert()
+	invert.vis = params.vis
+	invert.select = params.select
+	invert.line = params.line
+	shrun('rm -r '+params.map)
+	shrun('rm -r '+params.beam)
+	invert.map = params.map
+	invert.beam = params.beam
+	invert.options = params.options
+	invert.slop = 0.5
+	invert.stokes = 'ii'
+	invert.imsize = params.imsize 
+	invert.cell = params.cell
+	invert.robust= params.robust 
+	tout = invert.snarf()
+	return tout
+
+def clean(params):
+	clean = mirexec.TaskClean()
+	clean.map = params.map
+	clean.beam = params.beam
+	clean.cutoff = params.cutoff
+	if params.mask!=None:
+		clean.region='mask('+params.mask+')'
+		clean.niters = 100000
+	else:
+		clean.niters = 1000
+	shrun('rm -r '+params.model)
+	clean.out = params.model 
+	tout = clean.snarf()
+	#print ("\n".join(map(str, tout[0])))
+	return tout
+
+def restor(params, mode='clean'):	
+	restor = mirexec.TaskRestore()
+	restor.beam = params.beam
+	restor.map = params.map
+	restor.model = params.model
+	if mode!='clean':
+		restor.out = params.residual
+		restor.mode = 'residual'
+	else:
+		restor.out = params.image
+		restor.mode = 'clean'
+
+	shrun('rm -r '+restor.out)
+	tout = restor.snarf()
+	
+def maths(image, cutoff, mask):
+	shrun('rm -r '+mask)
+	maths = mirexec.TaskMaths()
+	maths.exp = '<'+image+'>'
+	maths.mask = '<'+image+'>'+".gt."+str(cutoff)
+	maths.out = mask
+	tout = maths.snarf()

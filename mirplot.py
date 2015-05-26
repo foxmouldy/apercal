@@ -1,6 +1,7 @@
 from apercal import mirexecb
 import io
 from IPython.display import HTML
+from IPython.display import Image
 from base64 import b64encode
 import subprocess
 
@@ -159,6 +160,19 @@ def imview(im=None, r=2, tempdir = "/home/frank/", typ='pixel', slev = "p,1", le
 		# NOTE: Return the HTML object to IPython Notebook for Embedding!
 		return HTML
 	else:
-		print "Error: vis argument has to be explicitly specified"
+		print "Error: im argument has to be explicitly specified"
 
+def imhist(im=None, tempdir = '/home/frank/', device='/png'):
+	'''
+	Pops up an histogram of the image.
+	'''
+	if im!=None:
 
+		out, err = shrun("imhist in="+im+" device="+device)
+		shrun("mv pgplot.png "+tempdir+'imhist.png')
+		i = Image(filename = tempdir + 'imhist.png')
+		out, err = shrun("imhist in="+im)
+		print out, err
+		return i
+	else:
+		print "Error: im argument missing."

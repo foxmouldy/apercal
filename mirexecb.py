@@ -1024,6 +1024,12 @@ class TaskAttsys (TaskBase):
 class TaskUVLin (TaskBase):
 	_keywords = ['vis', 'select', 'chans', 'out', 'order', 'offset', 'mode', 'options']
 	_options  = ['sun', 'twofit', 'nowindow', 'lpropc', 'relax', 'nocal', 'nopass', 'nopol']
+
+class TaskQuack (TaskBase):
+	_keywords = ['vis', 'select', 'interval', 'force', 'options', 'mode']
+	_options = ['anticipate']
+	_mode = ['frequency', 'source', 'mosaic']
+
 '''
 
 class TaskUVFlag (TaskBase):

@@ -118,41 +118,208 @@ def pgflag(vis, flagpar):
 	tout = pgflag.snarf();
 	acos.taskout(pgflag, tout, params.log)
 
-def mfcal(vis, params=None):
-	mfcal = mirexec.TaskMfCal()
-	mfcal.refant = params.refant
-	mfcal.interval = float(params.interval)
-	mfcal.edge = params.edge
-	if len(params.select)>2:
-		mfcal.select = params.select
-	mfcal.vis = vis
-	o = mfcal.snarf ()
-	return o
+def calcals(settings):
+	'''
+	Does MFCAL on all the calibrators. 
+	'''
+	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+settings.get('data', 'calprefix')+'*')
+	uvfiles = stdout[0].split('\n')[0:-1]
 
-def calcals(parfile):
+	mfcal = mirexec.TaskMfCal()
+	mfcal.refant = settings.get('mfcal', 'refant')
+	mfcal.interval = float(settings.get('mfcal', 'interval'))
+	mfcal.edge = settings.get('mfcal', 'edge')
+	mfcal.select = settings.get('mfcal', 'select')
+	o = []
+	for v in uvfiles:
+		mfcal.vis = v
+		o.append( mfcal.snarf())
+		print "MFCAL'd ", v 
+	return o
+	
+def cal2srcs(cal, settings):
 	'''
-	calcals - Calibrate the calibrators
-	CAL.UV -> UVFLAG -> MFCAL -> DONE
+	Cals = 'cal1,cal2'
+	Srcs = 'src1,src2'
 	'''
-	return None
+	for s in srcs.split(','):
+		puthd = mirexec.TaskPutHead()
+		puthd.in_ = s+'/restfreq'
+		puthd.value = 1.420405752
+		o = puthd.snarf()
+		
+		puthd.in_ = s+'/interval'
+		puthd.value = 1.0
+		puthd.type = 'double'
+		o = puthd.snarf()
+	
+		gpcopy  = mirexec.TaskGPCopy()
+		gpcopy.vis = cal
+		gpcopy.out = s
+		o = gpcopy.snarf()
 
 def mergensplit(vis, out, src):
-	uvcat = mirexec.TaskUVCat();
-	uvcat.vis = vis;
-	uvcat.select='source('+src+')';
+	uvcat = mirexec.TaskUVCat()
+	uvcat.vis = vis
+	uvcat.select='source('+src+')'
 	if out!=None:
 		uvcat.out = out
 	else:
 		uvcat.out = src+'.UV'
 	os.system("rm -r "+uvcat.out)
-	o = uvcat.snarf();
+	o = uvcat.snarf()
 
-def uvcal(invis, outvis, select=None):
+def hann_split(settings):
+	'''
+	Uses UVCAL to smooth and split sources. 
+	'''
+
+	# Get the file names.
+	srcprefix = settings.get('data', 'srcprefix')
+	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+'src*.uv')
+	uvfiles = stdout[0].split('\n')[0:-1]
+	source_names = apercal.get_source_names(uvfiles[0])
+
 	uvcal = mirexec.TaskUVCal ()
-	uvcal.vis = invis
-	uvcal.out = outvis
+	uvcal.vis = settings.get('data', 'working')+srcprefix+'*.uv'
 	uvcal.options = 'hanning'
-	if select!=None:
-		uvcal.select = "source("+select+")"
-	o = uvcal.snarf ()
+	o = []
+	for s in source_names:
+		print "Splitting ", s
+		uvcal.select = "source("+s+")"
+		uvcal.out = settings.get('data', 'working')+s+'.uv'
+		o.append(uvcal.snarf ())
+		print uvcal.vis, "split into", uvcal.out
+	return o 
 
+def source_split(settings):
+	'''
+	Splits sources without doing any smoothing.
+	'''
+	# Get the file names.
+	srcprefix = settings.get('data', 'srcprefix')
+	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+'src*.uv')
+	uvfiles = stdout[0].split('\n')[0:-1]
+	source_names = apercal.get_source_names(uvfiles[0])
+
+	uvcat = mirexec.TaskUVCal ()
+	uvcat.vis = settings.get('data', 'working')+srcprefix+'*.uv'
+	o = []
+	for s in source_names:
+		print "Splitting ", s
+		uvcat.select = "source("+s+")"
+		uvcat.out = settings.get('data', 'working')+s+'.uv'
+		o.append(uvcat.snarf ())
+		print uvcat.vis, "split into", uvcat.out
+	return o 
+
+def sbsplit(settings):
+	'''
+	Creates subdirectory structure for each source/pointing, and splits the parent UV file into
+	spectral windows. This is usually necessary for the selfcal module. 
+	'''
+	srcprefix = settings.get('data', 'srcprefix')
+	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+'src*.uv')
+	uvfiles = stdout[0].split('\n')[0:-1]
+	source_names = apercal.get_source_names(uvfiles[0])
+
+	for s in source_names:
+		print "Splitting ", s, " into subbands"
+		out, err = shrun("uvsplit vis="+settings.get('data', 'working')+s+".uv")
+		#print "Moving subbands into ", s
+		shrun("mkdir "+settings.get('data', 'working')+s)
+		#print "mkdir "+settings.get('data', 'working')+s
+		shrun("mv "+s.lower()+".* "+settings.get('data', 'working')+s+"/")
+		#print "mv "+s.lower()+".* "+settings.get('data', 'working')+s+"/"
+	print "Subband Split DONE"
+	return 1
+
+def ms2uv(settings):
+	'''
+	ms2uv(settings)
+	Function that converts MS to MIRIAD UV files, also does Tsys correction.
+	Loops over all calfiles and srcfiles. 
+	'''
+	# First, do the calfiles.
+	calprefix = settings.get('data', 'calprefix')
+	calfiles = settings.get('data', 'calfiles')
+	for i in range(0, len(calfiles)):
+		# NOTE: MS2UVFITS: MS -> UVFITS (in rawdata)
+		msfile = settings.get('data', 'rawdata') + calfiles[i]
+		ms2uvfits(inms = msfile)
+		uvfitsfile = msfile.replace('.MS', '.UVF')
+		uvfile = settings.get('data', 'working') + calprefix + str(i+1) + '.uv'
+		# NOTE: UVFITS: rawdata/UVFITS -> working/UV
+		wsrtfits(uvfitsfile, uvfile)
+
+	# Second, do the srcfiles.
+	srcprefix = settings.get('data', 'srcprefix')
+	srcfiles = settings.get('data', 'srcfiles')
+	for i in range(0, len(srcfiles)):
+		# NOTE: MS2UVFITS: MS -> UVFITS (in rawdata)
+		msfile = settings.get('data', 'rawdata') + srcfiles[i]
+		ms2uvfits(inms = msfile)
+		uvfitsfile = msfile.replace('.MS', '.UVF')
+		uvfile = settings.get('data', 'working') + srcprefix + str(i+1) + '.uv'
+		# NOTE: UVFITS: rawdata/UVFITS -> working/UV
+		wsrtfits(uvfitsfile, uvfile)
+	return 0 
+def quack(uv):
+	'''
+	quack(uv)
+	Wrapper around the MIRIAD task QVACK. Uses the standard settings. 
+	'''
+	# TODO: This section is a little defunct and doesn't quite work properly. Needs to be fixed.
+	quack = mirexec.TaskQuack()
+	quack.vis = uv
+	o = quack.snarf()
+	return o 
+
+def sflag(settings, prefix):
+	'''
+	sflags(settings, prefix) 
+	UVFLAG the static flags in the files defined by the given <prefix> - e.g. cal or src.
+	This refers to the prefix that you have assigned to the file, and **not** the name of the
+	variable. 
+	'''
+	# NOTE: Need to get the names of the calfiles.
+	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+prefix+'*')
+	uvfiles = stdout[0].split('\n')[0:-1]
+	for i in range(0, len(uvfiles)):
+		uvfile = settings.get('data', 'working') + prefix + str(i+1) + '.uv'		
+		uvflag(uvfile, settings.get('flag', 'sflags'))
+		out, err = shrun("qvack vis="+uvfile+" mode=source")
+		#print out, err
+		print "Flagged and Quacked ", uvfile
+		
+def cal2srcs(settings, cal='cal1.uv'):
+	'''
+	settings: The settings file from your session. This will be used to copy over the solutions.
+	cal: the name of the cal file (without full path) which you will use for the gain and
+	bandpass calibration. 
+
+	'''
+	cal = settings.get('data', 'working')+cal
+	srcprefix = settings.get('data', 'srcprefix')
+	srcfiles = settings.get('data', 'srcfiles')
+	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+'src*.uv')
+	uvfiles = stdout[0].split('\n')[0:-1]
+	o = []
+	for s in uvfiles:
+		puthd = mirexec.TaskPutHead();
+		puthd.in_ = s+'/restfreq';
+		puthd.value = 1.420405752;
+		o.append(puthd.snarf())
+		
+		puthd.in_ = s+'/interval'
+		puthd.value = 1.0
+		puthd.type = 'double'
+		o.append(puthd.snarf())
+	
+		gpcopy  = mirexec.TaskGPCopy();
+		gpcopy.vis = cal;
+		gpcopy.out = s;
+		o.append(gpcopy.snarf())
+		print "Copied Gains from ", cal, " to ",s
+	print "DONE cal2srcs"
+	return o 
