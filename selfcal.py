@@ -10,12 +10,20 @@ from apercal import mirexecb
 import threading 
 import time
 import subprocess
+import os
+
+def maths(image, cutoff, mask):
+	os.system('rm -r '+mask)
+	maths = mirexec.TaskMaths()
+	maths.exp = "<"+image+">"
+	maths.mask = "<"+image+">"+".gt."+str(cutoff)
+	maths.out = mask
+	tout = maths.snarf()
 
 def shrun(cmd):
 	'''
 	shrun: shell run - helper function to run commands on the shell.
 	'''
-	#print cmd
 	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
         	stderr = subprocess.PIPE, shell=True)
 	out, err = proc.communicate()
@@ -29,6 +37,26 @@ def getimmax(image):
 	immax = float(imstats[0][10][51:61]);
 	imunits = imstats[0][4];
 	return immax, imunits
+
+def get_cutoff(settings, cutoff=1e-3):
+	'''
+	This uses OBSRMS to calculate the theoretical RMS in the image.
+	'''
+	obsrms = mirexecb.TaskObsRMS()
+
+	params = settings.get('obsrms')
+	for p in params.__dict__:
+		setattr(obsrms, p, params[p])
+	rmsstr = obsrms.snarf()
+	#print "OBSRMS Output"
+	#print ("\n".join(map(str, rmsstr[0])))
+	rms = rmsstr[0][3].split(";")[0].split(":")[1].split(" ")[-2]
+	noise = float(params.nsigma)*float(rms)/1000.
+	if cutoff > noise:
+		return cutoff
+	else:
+		return noise
+
 
 def invertr(params):
 	invert = mirexec.TaskInvert()
@@ -80,34 +108,46 @@ def restor(params, mode='clean'):
 	tout = restor.snarf()
 
 def image(settings, i=0, **kwargs):
+	print "IMAGE"
 	params = settings.get('image')
 	for k in kwargs:
 		setattr(params, k, kwargs[k])
 	if type(settings.get('selfcal', 'vis'))!=str:
 		for v in settings.get('selfcal', 'vis'):
-			params.vis = settings.get('data', 'working') + settings.get('selfcal', 'pointing') + '/' + v
-			print params.vis
+			os.chdir(settings.get('data', 'working'))
+			params.vis = settings.get('selfcal', 'pointing') + '/' + v
+			print "Imaging ", params.vis
 			params.map = params.vis+'_map'+str(i)
 			params.beam = params.vis+'_beam'+str(i)
 			params.image = params.vis+'_image'+str(i)
 			params.mask = params.vis+'_mask'+str(i)
+			params.model = params.vis+'_model'+str(i)
 			params.residual = params.vis+'_residual'+str(i)
 			invertr(params)
+			immax, imunits = getimmax(params.map)
+			maths(params.map, immax/3, params.mask)
+			params.cutoff = get_cutoff(settings, cutoff=immax/30)
 			clean(params)
 			restor(params)
 			restor(params, mode='residual')
 	else:
-		params.vis = settings.get('data', 'working') +  settings.get('selfcal', 'pointing') + '/' + settings.get('selfcal', 'vis')
+		os.chdir(settings.get('data', 'working'))
+		params.vis = settings.get('selfcal', 'pointing') + '/' + settings.get('selfcal', 'vis')
 		print params.vis
 		params.map = params.vis+'_map'+str(i)
 		params.beam = params.vis+'_beam'+str(i)
 		params.image = params.vis+'_image'+str(i)
 		params.mask = params.vis+'_mask'+str(i)
+		params.model = params.vis+'_model'+str(i)
 		params.residual = params.vis+'_residual'+str(i)
 		invertr(params)
+		immax, imunits = getimmax(params.map)
+		maths(params.map, immax/3, params.mask)
+		params.cutoff = get_cutoff(settings, cutoff=immax/30)
 		clean(params)
 		restor(params)
 		restor(params, mode='residual')
+	print "Done!"
 	return params
 
 def get_params(configfile=None):

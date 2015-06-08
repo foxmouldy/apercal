@@ -1,21 +1,23 @@
+import pylab as pl
 from apercal import mirexecb
 import io
 from IPython.display import HTML
 from IPython.display import Image
 from base64 import b64encode
 import subprocess
+import sys
 
 def videcon(outname, tempdir = "/home/frank/", r=2.):
 	'''
 	Uses avconv to make the video!
 	'''
-	shrun("avconv -r "+str(r)+" -f image2 -i "+tempdir+"pgplot%d.gif -vcodec libx264 "+outname)
+	print "avconv -r "+str(r)+" -f image2 -i "+tempdir+"pgplot%d.gif -vcodec libx264 -y "+outname
+	shrun("avconv -r "+str(r)+" -f image2 -i "+tempdir+"pgplot%d.gif -vcodec libx264 -y "+outname)
 
 def shrun(cmd):
 	'''
 	shrun: shell run - helper function to run commands on the shell.
 	'''
-	#print cmd
 	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
         	stderr = subprocess.PIPE, shell=True)
 	out, err = proc.communicate()
@@ -24,27 +26,19 @@ def shrun(cmd):
 
 def vidshow(U=None, tempdir="/home/frank/", vidname="some_vid", r=2):
 
-		# 2. Get and rename the gifs:
 		gifs = []
 
 		shrun("rm "+tempdir+"*gif*")
 
 		U, e = shrun('ls pgplot.gif*')
-		#for i in range(0,len(U[1])):
-			#p = U[1][i].replace(" %PGPLOT, Writing new GIF image as: ","")
-			#gifs.append(U[1][i].replace(" %PGPLOT, Writing new GIF image as: ",""))
-			#shrun("mv "+p+" "+tempdir+"/pgplot"+str(i+2)+".gif")
-		#print U
+		U = U.split('\n')
 		for i in range(0,len(U)):
-			u = U[i]
-			uout = "pgplot.gif_"+i
-			print 'mv '+u+' '+tempdir+'/'+uout
-			shrun('mv '+u+' '+tempdir+'/'+uout)
+			uin  = "pgplot.gif_"+str(i+1)
+			uout = "pgplot"+str(i+1)+".gif"
+			shrun('mv '+uin+' '+tempdir+'/'+uout)
 		shrun("mv pgplot.gif "+tempdir+ "/pgplot1.gif")
 		
 		videcon(tempdir+"/"+vidname, tempdir=tempdir, r=r)
-		#shrun("rm "+tempdir+"*gif*")	
-		#3: Plot the data
 		video = io.open(tempdir+"/"+vidname, "rb").read()
 		video_encoded = b64encode(video)
 		video_tag = '<video controls alt="test" src="data:video/x-m4v;base64,{0}">'.format(video_encoded)
@@ -74,7 +68,6 @@ def uvplt(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
 	            select,set,size,source,stokes,unwrap,vis,xrange,yrange
 	'''
 	if vis!=None:
-		# 1: Make the plots
 	        uvplt = mirexecb.TaskUVPlot ()
 	        uvplt.vis = vis
 	        for k in kwargs.keys():
