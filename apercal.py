@@ -4,7 +4,9 @@ import acos
 import acim
 import plot
 import mirplot
+import mirplot2
 import crosscal2
+import selfcal
 from ConfigParser import SafeConfigParser
 import subprocess
 import mynormalize
