@@ -59,23 +59,24 @@ def get_cutoff(settings, cutoff=1e-3):
 
 
 def invertr(params):
-	invert = mirexec.TaskInvert()
-	invert.vis = params.vis
-	invert.select = params.select
-	invert.line = params.line
-	shrun('rm -r '+params.map)
-	shrun('rm -r '+params.beam)
-	invert.map = params.map
-	invert.beam = params.beam
-	invert.options = params.options
-	invert.slop = params.slop
-	invert.stokes = params.stokes
-	invert.imsize = params.imsize
-	invert.cell = params.cell
-	invert.fwhm = params.fwhm
-	invert.robust= params.robust 
-	tout = invert.snarf()
-	return tout
+    invert = mirexec.TaskInvert()
+    invert.vis = params.vis
+    if params.select.upper()!='NONE':
+            invert.select = params.select
+    invert.line = params.line
+    shrun('rm -r '+params.map)
+    shrun('rm -r '+params.beam)
+    invert.map = params.map
+    invert.beam = params.beam
+    invert.options = params.options
+    invert.slop = params.slop
+    invert.stokes = params.stokes
+    invert.imsize = params.imsize
+    invert.cell = params.cell
+    invert.fwhm = params.fwhm
+    invert.robust= params.robust 
+    tout = invert.snarf()
+    return tout
 
 def clean(params):
 	clean = mirexec.TaskClean()
@@ -149,6 +150,35 @@ def image(settings, i=0, **kwargs):
 		restor(params, mode='residual')
 	print "Done!"
 	return params
+
+def selfcal(settings):
+    '''
+    selfcal(settings)
+        Utility for running selfcal on one more visibility files. 
+        This cd's to your working directory and selfcals the visibility as defined by the vis and pointing
+        keywords in the selfcal section of your settings file. 
+    '''
+    selfcal = mirexec.TaskSelfCal()
+    params = settings.get('selfcal')
+    for p in params.__dict__:
+        setattr(selfcal, p, params[p])
+    if params.clip!='':
+        selfcal.clip = params.clip
+    os.chdir(settings.get('data', 'working'))
+    print "SELFCAL: ", settings.get('selfcal', 'vis')
+    if type(settings.get('selfcal', 'vis'))!=str:
+        for i in range(0, len(settings.get('selfcal', 'vis'))):
+            selfcal.vis = settings.get('selfcal', 'pointing') + '/' + settings.get('selfcal','vis')[i]
+            print "SELFCAL on ", selfcal.vis
+            selfcal.model = settings.get('selfcal', 'pointing') + '/' + settings.get('selfcal', 'model')[i]
+            tout = selfcal.snarf()
+    else:
+        selfcal.vis = settings.get('selfcal', 'pointing') + '/' + settings.get('selfcal', 'vis')
+        print "SELFCAL on ", selfcal.vis
+        selfcal.model = settings.get('selfcal', 'pointing') + '/' + settings.get('selfcal', 'model')
+        tout = selfcal.snarf()
+    print "DONE"
+    return tout
 
 def get_params(configfile=None):
 	if configfile!=None:

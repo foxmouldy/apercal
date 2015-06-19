@@ -60,14 +60,16 @@ if __name__=="__main__":
 	print "\n"
 
 def ms2uvfits(inms=None):
-	'''
-	ms2uvfits(inms=None)
-	Utility to convert inms to a uvfile
-	'''
-	outuvf = inms.replace(".MS", ".UVF")
-	cmd = "ms2uvfits ms="+inms+" fitsfile="+outuvf+" writesyscal=T multisource=T combinespw=T"
-	print "Converted ", outuvf
-	shrun(cmd)	
+    '''
+    ms2uvfits(inms=None)
+    Utility to convert inms to a uvfile
+    '''
+    outuvf = inms.replace(".MS", ".UVF")
+    cmd = "~/ms2uvfits ms="+inms+" fitsfile="+outuvf+" writesyscal=T multisource=T combinespw=T"
+    print cmd
+    #print "Converted ", outuvf
+    o, e =shrun(cmd)
+    print o
 
 def shrun(cmd):
 	'''
@@ -264,6 +266,7 @@ def ms2uv(settings):
 		# NOTE: UVFITS: rawdata/UVFITS -> working/UV
 		wsrtfits(uvfitsfile, uvfile)
 	return 0 
+
 def quack(uv):
 	'''
 	quack(uv)
