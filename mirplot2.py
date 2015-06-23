@@ -151,8 +151,8 @@ def imview(im=None, r=2, tempdir = "/home/frank/", typ='pixel', slev = "p,1", le
         cgdisp.nxy = nxy
         cgdisp.labtyp = labtyp
         cgdisp.options = options
-        #for k in kwargs.keys():
-        #   setattr(cgdisp, k, kwargs[k])
+        for k in kwargs.keys():
+		setattr(cgdisp, k, kwargs[k])
         
         cgdisp.device="/gif"
             
