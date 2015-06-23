@@ -65,60 +65,68 @@ class Bunch:
 
 	
 class settings:
-	def __init__(self, filename):
-		self.filename = filename
-		self.parser = SafeConfigParser ()
-		self.parser.read(self.filename)
-	def set(self, section, **kwds):
-		'''
-		settings.set(section, keyword1=value1, keyword2=value2)
-		Change settings using this method. 
-		'''
-		parser = self.parser
-		for k in kwds:
-			parser.set(section, k, kwds[k])
-		self.show(section=section)
-		self.save()
-
-	def show(self, section=None):
-		'''
-		settings.show(section=None)
-		Output the settings, by section if necessary.
-		'''
-		parser = self.parser
-		if section!=None:
-			print "["+section+"]"
-			for p in parser.items(section):
-				print p[0], " : ", p[1]
-			print "\n"
-		else:
-			for s in parser.sections ():
-				print "["+s+"]"
-				for p in parser.items(s):
-					print p[0], " : ", p[1]
-				print "\n"	
-	def get(self, section, keyword=None):
-		parser = self.parser
-		if keyword!=None:
-			if len(parser.get(section, keyword).split(','))>1:
-				return parser.get(section, keyword).split(',')
-			else:
-				return parser.get(section, keyword)
-		else:
-			return get_params(parser, section)
-
-	def save(self):
-		'''
-		settings.save()
-		Saves the new settings.
-		'''
-		parser = self.parser
-		parser.write(open(self.filename, 'w'))
-	
-	def full_path(self):
-		'''
-		settings.full_path(
-		'''
+    def __init__(self, filename):
+        self.filename = filename
+        self.parser = SafeConfigParser ()
+        self.parser.read(self.filename)
+        
+    def set(self, section, **kwds):
+        '''
+        settings.set(section, keyword1=value1, keyword2=value2)
+        Change settings using this method. 
+        '''
+        parser = self.parser
+        for k in kwds:
+            parser.set(section, k, kwds[k])
+        self.show(section=section)
+        self.save()
+    
+    def show(self, section=None):
+        '''
+        settings.show(section=None)
+        Output the settings, by section if necessary.
+        '''
+        parser = self.parser
+        if section!=None:
+            print "["+section+"]"
+            for p in parser.items(section):
+                print p[0], " : ", p[1]
+            print "\n"
+        else:
+            for s in parser.sections ():
+                print "["+s+"]"
+                for p in parser.items(s):
+                    print p[0], " : ", p[1]
+                print "\n"	
+    def get(self, section, keyword=None):
+        parser = self.parser
+        if keyword!=None:
+            if len(parser.get(section, keyword).split(','))>1:
+                return parser.get(section, keyword).split(',')
+            else:
+                return parser.get(section, keyword)
+        else:
+            return get_params(parser, section)
+    
+    def update(self):
+        '''
+        Read the file again. 
+        '''
+        print "updated"
+        self.parser.read(self.filename)
+               
+    def save(self):
+        '''
+        settings.save()
+        Saves the new settings.
+        '''
+        parser = self.parser
+        parser.write(open(self.filename, 'w'))
+    
+    def full_path(self):
+        '''
+        settings.full_path(
+        '''
 
 def get_params(config_parser, section):
 	params = Bunch()

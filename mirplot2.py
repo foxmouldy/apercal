@@ -129,7 +129,7 @@ def gpplt(vis=None, r=2, tempdir = "/home/frank/", **kwargs):
 		return HTML
 	else:
 		print "Error: vis argument has to be explicitly specified"
-
+        
 def imview(im=None, r=2, tempdir = "/home/frank/", typ='pixel', slev = "p,1", levs="2e-3", 
         rang="0,2e-3,lin", nxy="1,1", labtyp = "hms,dms", options="wedge,3pixel", **kwargs):
     '''
@@ -151,8 +151,9 @@ def imview(im=None, r=2, tempdir = "/home/frank/", typ='pixel', slev = "p,1", le
         cgdisp.nxy = nxy
         cgdisp.labtyp = labtyp
         cgdisp.options = options
-        for k in kwargs.keys():
-                    setattr(cgdisp, k, kwargs[k])
+        #for k in kwargs.keys():
+        #   setattr(cgdisp, k, kwargs[k])
+        
         cgdisp.device="/gif"
             
         U = cgdisp.snarf()
