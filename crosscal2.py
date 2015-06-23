@@ -69,7 +69,7 @@ def ms2uvfits(inms=None):
     print cmd
     #print "Converted ", outuvf
     o, e =shrun(cmd)
-    print o
+    print o, e
 
 def shrun(cmd):
 	'''

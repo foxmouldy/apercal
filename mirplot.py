@@ -4,6 +4,7 @@ from IPython.display import HTML
 from IPython.display import Image
 from base64 import b64encode
 import subprocess
+import os
 
 def videcon(outname, tempdir = "/home/frank/", r=2.):
 	'''
@@ -129,38 +130,40 @@ def gpplt(vis=None, r=2, tempdir = "/home/frank/", **kwargs):
 		print "Error: vis argument has to be explicitly specified"
 
 def imview(im=None, r=2, tempdir = "/home/frank/", typ='pixel', slev = "p,1", levs="2e-3", 
-		rang="0,2e-3,lin", nxy="1,1", labtyp = "hms,dms", options="wedge,3pixel", **kwargs):
-	'''
-	IPython Video Embedder for GPPLT. 
-	vis = Full path of vis to be plotted
-	r = plots per second [2]
-	    Please specify vis and any of the following:
-	'''
-	if im!=None:
-		# NOTE: Use CGDISP to make the plots
-		cgdisp = mirexecb.TaskCgDisp ()
-		cgdisp.in_ = im
-		cgdisp.type = typ
-		cgdisp.slev = slev
-		cgdisp.levs = levs
-		cgdisp.range = rang 
-		cgdisp.nxy = nxy
-		cgdisp.labtyp = labtyp
-		cgdisp.options = options
-
-	        for k in kwargs.keys():
-	                setattr(cgdisp, k, kwargs[k])
-	        cgdisp.device="/png"
-	        
-		U = cgdisp.snarf()
-
-		# NOTE: Get the output from vidshow!
-		HTML = vidshow(U=U, tempdir=tempdir, vidname="imview.m4v", r=r)
-
-		# NOTE: Return the HTML object to IPython Notebook for Embedding!
-		return HTML
-	else:
-		print "Error: im argument has to be explicitly specified"
+        rang="0,2e-3,lin", nxy="1,1", labtyp = "hms,dms", options="wedge,3pixel", **kwargs):
+    '''
+    IPython Video Embedder for GPPLT. 
+    vis = Full path of vis to be plotted
+    r = plots per second [2]
+        Please specify vis and any of the following:
+    '''
+    path = os.path.split(im)
+    os.chdir(path[0])
+    if im!=None:
+        # NOTE: Use CGDISP to make the plots
+        cgdisp = mirexecb.TaskCgDisp ()
+        cgdisp.in_ = im
+        cgdisp.type = typ
+        cgdisp.slev = slev
+        cgdisp.levs = levs
+        cgdisp.range = rang 
+        cgdisp.nxy = nxy
+        cgdisp.labtyp = labtyp
+        cgdisp.options = options
+    
+            for k in kwargs.keys():
+                    setattr(cgdisp, k, kwargs[k])
+            cgdisp.device="/png"
+            
+        U = cgdisp.snarf()
+    
+        # NOTE: Get the output from vidshow!
+        HTML = vidshow(U=U, tempdir=tempdir, vidname="imview.m4v", r=r)
+    
+        # NOTE: Return the HTML object to IPython Notebook for Embedding!
+        return HTML
+    else:
+        print "Error: im argument has to be explicitly specified"
 
 def imhist(im=None, tempdir = '/home/frank/', device='/png'):
 	'''
