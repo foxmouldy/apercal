@@ -112,7 +112,7 @@ class settings:
         '''
         Read the file again. 
         '''
-        print "updated"
+        print "Updated"
         self.parser.read(self.filename)
                
     def save(self):
@@ -216,22 +216,24 @@ def get_cutoff(settings0, cutoff=1e-3):
 		return noise
 
 def invertr(params):
-	invert = mirexec.TaskInvert()
-	invert.vis = params.vis
-	invert.select = params.select
-	invert.line = params.line
-	shrun('rm -r '+params.map)
-	shrun('rm -r '+params.beam)
-	invert.map = params.map
-	invert.beam = params.beam
-	invert.options = params.options
-	invert.slop = 0.5
-	invert.stokes = 'ii'
-	invert.imsize = params.imsize 
-	invert.cell = params.cell
-	invert.robust= params.robust 
-	tout = invert.snarf()
-	return tout
+    invert = mirexec.TaskInvert()
+    invert.vis = params.vis
+    if params.select!='':
+        invert.select = params.select
+    if params.line!='':
+        invert.line = params.line
+    shrun('rm -r '+params.map)
+    shrun('rm -r '+params.beam)
+    invert.map = params.map
+    invert.beam = params.beam
+    invert.options = params.options
+    invert.slop = 0.5
+    invert.stokes = 'ii'
+    invert.imsize = params.imsize 
+    invert.cell = params.cell
+    invert.robust= params.robust 
+    tout = invert.snarf()
+    return tout
 
 def clean(params):
 	clean = mirexec.TaskClean()
