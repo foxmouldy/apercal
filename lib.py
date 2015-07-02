@@ -7,24 +7,25 @@ import pylab as pl
 import os 
 #import mselfcal
 
-def mirrun(task=None, **kwargs):
-	'''
-	mirrun - Miriad Task Runner
-	Usage: mirrun(task='sometask', arg1=val1, arg2=val2)
-	Example: mirrun(task='invert', vis='/home/frank/test.uv/', options='mfs,double', ...)
-	Each argument is passed to the task through the use of the keywords. 
-	'''
-	if task!=None:
-		argstr = " "
-		for k in kwargs.keys():
-			argstr += k + '=' + kwargs[k]+ ' '
-		cmd = task + argstr
-		print cmd
-		out, err = shrun(cmd)
-		print out, err
-		return out, err
-	else:
-		print "Usage = mirrun(task='sometask', arg1=val1, arg2=val2...)"
+def mirrun(task=None, verbose=False, **kwargs):
+    '''
+    mirrun - Miriad Task Runner
+    Usage: mirrun(task='sometask', arg1=val1, arg2=val2)
+    Example: mirrun(task='invert', vis='/home/frank/test.uv/', options='mfs,double', ...)
+    Each argument is passed to the task through the use of the keywords. 
+    '''
+    if task!=None:
+        argstr = " "
+        for k in kwargs.keys():
+            argstr += k + '=' + kwargs[k]+ ' '
+        cmd = task + argstr
+        out, err = shrun(cmd)        
+        if verbose!=False:
+               print cmd
+               print out, err
+        return out, err
+    else:
+        print "Usage = mirrun(task='sometask', arg1=val1, arg2=val2...)"
 
 def shrun(cmd):
 	'''
