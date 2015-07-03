@@ -1,5 +1,16 @@
-import mirexecb
-import mirexecb as mirexec
+import imp
+try:
+    imp.find_module('mirexecb')
+    found = True
+    import mirexecb
+except ImportError:
+    found = False
+try:
+    imp.find_module('mirexec')
+    found = True
+    import mirexec
+except ImportError:
+    found = False
 import acos
 import acim
 import plot

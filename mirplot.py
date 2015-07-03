@@ -103,7 +103,7 @@ def videcon(outname, tempdir = "/home/frank/", r=2.):
     Uses avconv to make the video!
     '''
     o, e = shrun("avconv -r "+str(r)+" -f image2 -i "+tempdir+"pgplot%d.gif -vcodec libx264 -y "+outname)
-
+    
 def shrun(cmd):
 	'''
 	shrun: shell run - helper function to run commands on the shell.
@@ -131,6 +131,9 @@ def vidshow(U=None, tempdir="/home/frank/", vidname="some_vid", r=2):
     shrun("mv pgplot.gif "+tempdir+ "/pgplot1.gif")
     
     videcon(tempdir+"/"+vidname, tempdir=tempdir, r=r)
+
+    # Delete the intermediate gifs
+    shrun("rm "+tempdir+"/pgplot*.gif")
     video = io.open(tempdir+"/"+vidname, "rb").read()
     video_encoded = b64encode(video)
     video_tag = '<video controls alt="test" src="data:video/x-m4v;base64,{0}">'.format(video_encoded)
@@ -169,12 +172,13 @@ def uvplt(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
     tempdir = check_tempdir(tempdir)
     
     # Switch to the path
-    path = os.path.split(im)
+    path = os.path.split(vis)
     os.chdir(path[0])
     
     # Use mirrun to run uvplt
     U, E = lib.mirrun(task = 'uvplt', vis = path[1], device='/gif', **kwargs)
-    
+    if len(E)>1:
+        sys.exit("UVPLT Oops: "+E)
     # Get the output from vidshow
     HTML = vidshow(U=U, tempdir=tempdir, vidname="uvplt.m4v", r=r)
     
@@ -203,6 +207,8 @@ def uvspec(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
     
     # Make the plots using uvspec
     U, E = lib.mirrun(task = 'uvspec', vis=path[1], device='/gif', **kwargs)
+    if len(E)>1:
+        sys.exit("UVSPEC Oops: "+E)
     
     # Embed the plots
     HTML = vidshow(U=U, tempdir=tempdir, vidname="uvspec.m4v", r=r)
