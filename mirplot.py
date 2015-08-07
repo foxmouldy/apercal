@@ -272,7 +272,7 @@ def imview(im=None, r=2, tempdir = None, typ='pixel', slev = "p,1", levs="2e-3",
     # Use CGDISP to make the plots
     # This uses the generic lib.mirrun() method, so you don't need anything special to run this.
     U, E = lib.mirrun(task='cgdisp', device='/gif', in_ = path[1], type=typ, slev=slev, levs=levs, range=rang,
-                   nxy=nxy, labtyp=labty, **kwargs)
+                   nxy=nxy, labtyp=labtyp, **kwargs)
 
     # Get the output from vidshow!
     HTML = vidshow(tempdir=tempdir, vidname="imview.m4v", r=r)

@@ -5,6 +5,7 @@ import subprocess
 import mynormalize
 import pylab as pl
 import os 
+import sys
 #import mselfcal
 
 def mirrun(task=None, verbose=False, **kwargs):
@@ -63,8 +64,7 @@ class Bunch:
 		self.__dict__.update(kwds)
 	def __getitem__(self, key):
 		return getattr(self, key)
-
-	
+    
 class settings:
     def __init__(self, filename):
         self.filename = filename
@@ -126,8 +126,11 @@ class settings:
     
     def full_path(self):
         '''
-        settings.full_path(
+        Uses rawdata and base to make the full working path, when necessary.
         '''
+        full_path = self.get('data', 'working')+self.get('data', 'base')
+        return full_path
+        
 
 def get_params(config_parser, section):
 	params = Bunch()
@@ -274,3 +277,14 @@ def maths(image, cutoff, mask):
 	maths.mask = '<'+image+'>'+".gt."+str(cutoff)
 	maths.out = mask
 	tout = maths.snarf()
+    
+def uvflag(vis, select, flagval='flag'):
+    '''
+    Utility to flag your data
+    '''
+    path = os.path.split(vis)
+    os.chdir(path[0])
+    O, E = mirrun(task = 'uvflag', vis = path[1], select=select, flagval = flagval)
+    if len(E)>1:
+        sys.exit(E)
+    
