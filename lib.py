@@ -124,11 +124,12 @@ class settings:
         parser = self.parser
         parser.write(open(self.filename, 'w'))
     
-    def full_path(self):
+    def full_path(self, dirx):
         '''
         Uses rawdata and base to make the full working path, when necessary.
         '''
-        full_path = self.get('data', 'working')+self.get('data', 'base')
+        #full_path = self.get('data', 'working')+self.get('data', 'base')
+        full_path = self.get('data', 'working')+dirx
         return full_path
         
 

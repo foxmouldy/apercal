@@ -131,6 +131,19 @@ def get_params(config_parser, section):
         setattr(params, p[0], p[1])
     return params
 
+def move2dir(path):
+    '''
+    move2dir(path)
+    Check if the path exists. If not, then make the path. If so, then change to it. 
+    '''
+    if not os.path.exists(path):
+        o, e = shrun('mkdir '+path)
+        print o, e
+        os.chdir(path)
+        print 'making path'
+    else:
+        os.chdir(path)
+
 def mirrun(task=None, verbose=False, **kwargs):
     '''
     mirrun - Miriad Task Runner
