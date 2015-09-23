@@ -14,7 +14,7 @@ except ImportError:
 import acos
 import acim
 import plot
-import mirplot2
+import mirplot
 import crosscal2
 import selfcal
 from ConfigParser import SafeConfigParser

@@ -8,6 +8,40 @@ import os
 import sys
 #import mselfcal
 
+def exceptioner(O, E):
+    '''
+    exceptioner(O, E) where O and E are the stdout outputs and errors. 
+    A simple and stupid way to do exception handling. 
+    '''
+    for e in E.split('\n'):
+        if "FATAL" in e.upper()>0:
+            print O
+            print "\n"
+            print "FATALITY -> Task has ended horribly XP"
+            print E
+            sys.exit(0)
+
+
+def str2bool(s):
+    if s.upper() == 'TRUE' or s.upper()=="T" or s.upper()=="Y":
+         return True
+    elif s.upper() == 'FALSE' or s.upper()=='F' or s.upper()=='N':
+         return False
+    else:
+         raise ValueError # evil ValueError that doesn't tell you what the wrong value was
+
+def mkdir(path):
+    '''
+    mkdir(path)
+    Checks if path exists, and creates if it doesn't exist. 
+    '''
+    if not os.path.exists(path):
+        print path
+        print os.path.exists(path)
+        print 'Making Path'
+        o, e = shrun('mkdir '+path)
+        print o, e
+            
 def mirrun(task=None, verbose=False, **kwargs):
     '''
     mirrun - Miriad Task Runner
@@ -18,7 +52,9 @@ def mirrun(task=None, verbose=False, **kwargs):
     if task!=None:
         argstr = " "
         for k in kwargs.keys():
-            argstr += k + '=' + kwargs[k]+ ' '
+            if str(kwargs[k]).upper()!='NONE':
+                
+                argstr += k + '=' + str(kwargs[k])+ ' '
         cmd = task + argstr
         out, err = shrun(cmd)        
         if verbose!=False:

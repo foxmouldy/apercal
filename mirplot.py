@@ -19,7 +19,6 @@ Each argument (even numbers and integers) need to be strings - e.g. the interval
 # Author: Brad Frank
 
 import pylab as pl
-from apercal import lib
 import io
 from IPython.display import HTML
 from IPython.display import Image
@@ -28,7 +27,38 @@ import subprocess
 import sys
 import os
 
+def mirrun(task=None, verbose=False, **kwargs):
+    '''
+    mirrun - Miriad Task Runner
+    Usage: mirrun(task='sometask', arg1=val1, arg2=val2)
+    Example: mirrun(task='invert', vis='/home/frank/test.uv/', options='mfs,double', ...)
+    Each argument is passed to the task through the use of the keywords. 
+    '''
+    if task!=None:
+        argstr = " "
+        for k in kwargs.keys():
+            if str(kwargs[k]).upper()!='NONE':
+                
+                argstr += k + '=' + str(kwargs[k])+ ' '
+        cmd = task + argstr
+        out, err = shrun(cmd)        
+        if verbose!=False:
+               print cmd
+               print out, err
+        return out, err
+    else:
+        print "Usage = mirrun(task='sometask', arg1=val1, arg2=val2...)"
 
+def shrun(cmd):
+	'''
+	shrun: shell run - helper function to run commands on the shell.
+	'''
+	#print cmd
+	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+        	stderr = subprocess.PIPE, shell=True)
+	out, err = proc.communicate()
+	# NOTE: Returns the STD output.
+	return out, er
 
 def check_tempdir(tempdir=None):
     '''
@@ -176,7 +206,7 @@ def uvplt(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
     os.chdir(path[0])
     
     # Use mirrun to run uvplt
-    U, E = lib.mirrun(task = 'uvplt', vis = path[1], device='/gif', **kwargs)
+    U, E = mirrun(task = 'uvplt', vis = path[1], device='/gif', **kwargs)
     if len(E)>1:
         sys.exit("UVPLT Oops: "+E)
     # Get the output from vidshow
@@ -206,7 +236,7 @@ def uvspec(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
     os.chdir(path[0])
     
     # Make the plots using uvspec
-    U, E = lib.mirrun(task = 'uvspec', vis=path[1], device='/gif', **kwargs)
+    U, E = mirrun(task = 'uvspec', vis=path[1], device='/gif', **kwargs)
     if len(E)>1:
         sys.exit("UVSPEC Oops: "+E)
     
@@ -239,7 +269,7 @@ def gpplt(vis=None, r=2, tempdir = "/home/frank/", **kwargs):
     os.chdir(path[0])
     
     # Use GPPLT to make the plots
-    U, E = lib.mirrun(task = 'gpplt', device='/gif', vis = path[1], **kwargs)
+    U, E = mirrun(task = 'gpplt', device='/gif', vis = path[1], **kwargs)
    
     # Get the output from vidshow
     HTML = vidshow(U=U, tempdir=tempdir, vidname="gpplt.m4v", r=r)
@@ -271,7 +301,7 @@ def imview(im=None, r=2, tempdir = None, typ='pixel', slev = "p,1", levs="2e-3",
     
     # Use CGDISP to make the plots
     # This uses the generic lib.mirrun() method, so you don't need anything special to run this.
-    U, E = lib.mirrun(task='cgdisp', device='/gif', in_ = path[1], type=typ, slev=slev, levs=levs, range=rang,
+    U, E = mirrun(task='cgdisp', device='/gif', in_ = path[1], type=typ, slev=slev, levs=levs, range=rang,
                    nxy=nxy, labtyp=labtyp, **kwargs)
 
     # Get the output from vidshow!
