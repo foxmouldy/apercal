@@ -2,143 +2,174 @@
 '''
 Bradley Frank, ASTRON 2015
 crosscal.py
-This script automates the commonly used method for cross-calibrating WSRT data. 
+This is a library for the cross-calibration of WSRT/APERTIF data. 
 Usage:
-python crosscal.py
-You need to have a config file to specify all the inputs. 
+import crosscal
 '''
-from apercal import acos
-from apercal import mirexecb as mirexec
-from ConfigParser import SafeConfigParser
-from optparse import OptionParser 
 import sys
 import os
-import apercal
-import subprocess
-global options
-global args
-global params
+import logging
+import lib
+#global params
+# TODO: params needs to be replaced everywhere. 
 
-if __name__=="__main__":
+
+def ms2uvfits(ms=None):
+    	'''
+    	ms2uvfits(ms=None)
+    	Utility to convert ms to a uvfits file
+    	'''
+	# Setup the path and input file name.  
+    	path2ms = os.path.split(ms)[0]
+	ms = os.path.split(ms)[1]
+	logging.info("ms2uvfits: Converting MS to UVFITS Format")
+	if ms is None:
+		logger.error("MS not specified. Please check parameters")
+		sys.exit(0)
+	try: 
+		os.chdir(path2ms)
+		logging.info("Moved to path "+path2ms)
+	except:
+		logging.error("Error: Directory or MS does not exist!")
+		sys.exit(0)
 	
-	usage = "usage: %prog options"
-	parser = OptionParser(usage=usage);
-	
-	parser.add_option("--config", "-c", type='string', dest='config', default="None", 
-		help = "Config for input values [None]")
-	parser.add_option("--pgflag", "-p", action="store_true", dest="pgflag", default=False,
-		help = "Use PGFLAG for automated flagging [False]")
-	parser.add_option("--commands", dest="commands", default="filer,mns,calr,splitr", 
-		help = "Calibration steps to make [filer,calr]")
-	parser.add_option("--doms2uvfits", action='store_true', dest='doms2uvfits', default=False,
-		help = "Do ms2uvfits? [False]")
-	parser.add_option("--mkconf", action="store_true", dest="mkconf", default=False, 
-		help = "Make a new config file? [False]")
-	
-	(options, args) = parser.parse_args();
-	if len(sys.argv)==1:
-		parser.print_help()
-		dummy = sys.exit(0)
-	# Get the parameters
-	if options.mkconf!=False:
-		# Get the directory of the script:
-		sdir = os.path.dirname(os.path.realpath(__file__))
-		config_parser = SafeConfigParser()
-		config_parser.read(sdir+"/default.txt")
-		cdir = os.getcwd()
-		with open(cdir+'/default.txt', 'w') as newfile:
-			config_parser.write(newfile)
-		newfile.close()
-		print "Made default.txt"
-		print "Edit (and rename) default.txt before proceeding."
-		sys.exit(1)
+	# Start the processing by setting up an output name and reporting the status.	
+    	uvfits = ms.replace(".MS", ".UVF")
+	# TODO: Decided whether to replace logging.info with logging.debug, since this module is
+	# wrapped up. 
+	logging.info("MS: "+ms)
+	logging.info("UVFITS: "+uvfits)
+	logging.info("Directory: "+path2ms)
+	# NOTE: Here I'm using masher to call ms2uvfits.  
+	o = lib.masher(task='ms2uvfits', ms=ms, fitsfile=uvfits, writesyscal='T',
+			multisource='T', combinespw='T')
 
-	params = get_params(options.config)
-	for c in options.commands.split(','):
-		exec(c+"(params)")
-	print "\n"
-	print "\n"
-
-def ms2uvfits(inms=None):
-    '''
-    ms2uvfits(inms=None)
-    Utility to convert inms to a uvfile
-    '''
-    outuvf = inms.replace(".MS", ".UVF")
-    cmd = "~/ms2uvfits ms="+inms+" fitsfile="+outuvf+" writesyscal=T multisource=T combinespw=T"
-    print cmd
-    #print "Converted ", outuvf
-    o, e =shrun(cmd)
-    print o, e
-
-def shrun(cmd):
+def importuvfitsys(uvfits=None, uv=None, tsys=True):
 	'''
-	shrun: shell run - helper function to run commands on the shell.
-	'''
-	#print cmd
-	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-        	stderr = subprocess.PIPE, shell=True)
-	out, err = proc.communicate()
-	# NOTE: Returns the STD output.
-	return out, err
+	Imports UVFITS file and does Tsys correction on the output MIRIAD UV file.
+	Uses the MIRIAD task WSRTFITS to import the UVFITS file and convert it to MIRIAD UV format.
+	Uses the MIRIAD task ATTSYS to do the Tsys correction.
 
-def wsrtfits(uvf, uv=None):
+	'''
 	# NOTE: Import the fits file
-	if uv==None:
-		uv = uvf.replace('.UVF','.UV')
-	cmd = 'wsrtfits in='+uvf+' op=uvin velocity=optbary out='+uv
-	shrun(cmd)
+	path2uvfits = os.path.split(uvfits)[0]
+	uvfits = os.path.split(uvfits)[1]
+	if uv is None:
+		# Default output name if a custom name isn't provided.
+		uv = uvfits.split('.')[0]+'.UV'
+	if uvfits is None:
+		logger.error("UVFITS not specified. Please check parameters")
+		sys.exit(0)
+	try: 
+		os.chdir(path2uvfits)
+		logging.info("Moved to path "+path2uvfits)
+	except:
+		logging.error("Error: Directory or UVFITS file does not exist!")
+		sys.exit(0)
+	#cmd = 'wsrtfits in='+uvf+' op=uvin velocity=optbary out='+uv
+	lib.masher(task='wsrtfits', in_=uvfits, out=uv, op='uvin', velocity='optbary')
+
 	# NOTE: Tsys Calibration
-	shrun("attsys vis="+uv+" out=temp")
-	shrun('rm -r '+uv)
-	shrun('mv temp '+uv);
-	shrun('rm -r temp')
+	#basher("attsys vis="+uv+" out=temp")
+	if tsys is True:
+		lib.masher(task='attsys', vis=uv, out='temp')
+		lib.basher('rm -r '+uv)
+		lib.basher('mv temp '+uv);
 
-def uvflag(vis, flags):
+def uvflag(vis=None, select=None):
 	'''
-	UVFLAG: Make the standard flags.
+	vis: visibility file to be flagged
+	select: semi-colon separated list of data selections to be flagged
 	'''
-	uvflg = mirexec.TaskUVFlag()
-	for f in flags:
-		uvflg.vis = vis
-		uvflg.select = f
-		uvflg.flagval = 'flag'
-		o = uvflg.snarf()
+	# Setup the path and move to it.
+	path2vis = os.path.split(vis)[0]
+	vis = os.path.split(vis)[1]
+	logging.info("uvflag: Flagging Tool")
+	if vis is None or select is None:
+		logger.error("Vis or Flagsnot specified. Check parameters.")
+		sys.exit(0)
+	try: 
+		os.chdir(path2vis)
+		logging.info("Moved to path "+path2vis)
+	except:
+		logging.error("Error: path to vis does not exist!")
+		sys.exit(0)
+	# Flag each selection in a for-loop
+	for s in select.split(';'):
+		o = lib.masher(task='uvflag', vis=vis, select='"'+s+'"', flagval='flag') 
+		logging.info(o)
 
-def pgflag(vis, flagpar):
-	if params.log==None:
-		params.log = vis+'.pgflag.txt' 
-	pgflag = mirexec.TaskPGFlag()
-	pgflag.vis = vis
-	pgflag.stokes = params.stokes
-	pgflag.flagpar = flagpar
-	pgflag.options = 'nodisp'
-
-	# This specifies the SumThresholding command.
-	pgflag.command = '<'
-	print pgflag.__dict__
-	tout = pgflag.snarf();
-	acos.taskout(pgflag, tout, params.log)
-
-def calcals(settings):
+def pgflag(vis=None, flagpar='6,2,2,2,5,3', settings=None, stokes='qq'):
 	'''
-	Does MFCAL on all the calibrators. 
+	Wrapper around the MIRIAD task PGFLAG, which in turn is a wrapper for the AOFlagger
+	SumThreshold algorithm.
+	Defaults:  flagpar='6,2,2,2,5,3',  stokes='qq'
+	Uses parameters from a settings object if this is provided.
+	Outputs are written to a log file, which is in the same directory as vis, and has name
+	<vis>.pgflag.txt.
+	Note: The considerably long output of PGFLAG is written out with the logger at debug level.
+	This may not be ideal if you're having a quick look, so switch the level to info if you want
+	to avoid the output of the task appearing in your console. 
+	Beware: You could lose a LOT of data if you're not careful!!!
 	'''
-	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+settings.get('data', 'calprefix')+'*')
-	uvfiles = stdout[0].split('\n')[0:-1]
+	# Exception handling and checking
+	logging.info("PGFLAG: Automated Flagging using SumThresholding")
+	if vis is None and settings is None:
+		logging.error("No inputs - please provide either vis and flagpar or settings.")
+		sys.exit(0)
+	path2vis = os.path.split(vis)[0]
+	vis = os.path.split(vis)[1]
+	try: 
+		os.chdir(path2vis)
+		logging.info("Moved to path "+path2vis)
+	except:
+		logging.error("Error: path to vis does not exist!")
+		sys.exit(0)
 
-	mfcal = mirexec.TaskMfCal()
-	mfcal.refant = settings.get('mfcal', 'refant')
-	mfcal.interval = float(settings.get('mfcal', 'interval'))
-	mfcal.edge = settings.get('mfcal', 'edge')
-	mfcal.select = settings.get('mfcal', 'select')
-	o = []
-	for v in uvfiles:
-		mfcal.vis = v
-		o.append( mfcal.snarf())
-		print "MFCAL'd ", v 
-	return o
+	# Do pgflag with the settings parameters if provided.
+	if settings is not None and vis is not None:
+		params = settings.get('pgflag')
+		logging.info("Doing PGFLAG on "+vis+" using stokes="+params.stokes+" with flagpar="+params.flagpar)
+		logging.info("Output written to "+vis+'.pgflag.txt')
+		o = lib.masher(task='pgflag', vis=vis, stokes=params.stokes, flagpar=params.flagpar, 
+				options='nodisp', command="'<'")
+	# Do PGFLAG with input settings, i.e. no settings file provided.
+	if vis is not None and settings is None:
+		logging.info("Doing PGFLAG on "+vis+" using stokes "+stokes+" with flagpar="+flagpar)
+		o = lib.masher(task='pgflag', vis=vis, stokes=stokes, flagpar=flagpar, options='nodisp', command="'<'")
+	logging.info("Writing output "+path2vis+'/'+vis+'.pgflag.txt')
+	lib.write2file('pgflag', o, vis+'.pgflag.txt')	
+	logging.info("PGFLAG: DONE.")
 	
+def calcals(settings=None):
+	'''
+	Does MFCAL on the calibrator visibilities provided, for all the calibrators in the
+	directory. 
+	Changes into the working directory, and does MFCAL on all the calibrator files in there.
+	'''
+	# Setting up and exception handling.
+	logging.info("CALCALS: MFCALS on all Calibrator Visibilities")	
+	if settings is None:
+		logging.error("Settings Not Provided!")
+		sys.exit(0)
+
+	params = settings.get('mfcal')
+	try: 
+		os.chdir(settings.get('data', 'working'))
+		logging.info("Moved to path "+settings.get('data', 'working'))
+	except:
+		logging.error("Error: path does not exist!")
+		sys.exit(0)
+	# Get the name of the calibrator files
+	uvfiles = settings.get('data', 'cals')
+	# Repeat MFCAL for each of the calibrator files.
+	for v in uvfiles:
+		output = lib.masher(task='mfcal', refant=params.refant, vis=v,
+				interval=params.interval, edge=params.edge,
+				select='"'+params.select+'"')
+		logging.info("Completed MFCAL on "+v)
+	logging.info("CALCALS Done!")	
+
 def cal2srcs(cal, settings):
 	'''
 	Cals = 'cal1,cal2'
@@ -178,7 +209,7 @@ def hann_split(settings):
 
 	# Get the file names.
 	srcprefix = settings.get('data', 'srcprefix')
-	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+'src*.uv')
+	stdout = apercal.basher('ls -d '+settings.get('data', 'working')+'src*.uv')
 	uvfiles = stdout[0].split('\n')[0:-1]
 	source_names = apercal.get_source_names(uvfiles[0])
 
@@ -200,7 +231,7 @@ def source_split(settings):
 	'''
 	# Get the file names.
 	srcprefix = settings.get('data', 'srcprefix')
-	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+'src*.uv')
+	stdout = apercal.basher('ls -d '+settings.get('data', 'working')+'src*.uv')
 	uvfiles = stdout[0].split('\n')[0:-1]
 	source_names = apercal.get_source_names(uvfiles[0])
 
@@ -215,26 +246,41 @@ def source_split(settings):
 		print uvcat.vis, "split into", uvcat.out
 	return o 
 
-def sbsplit(settings):
+def sbsplit(vis=None):
 	'''
-	Creates subdirectory structure for each source/pointing, and splits the parent UV file into
-	spectral windows. This is usually necessary for the selfcal module. 
+	Creates subdirectory for each source/pointing. 
+	vis is the name of the visibility file to be splitted, or a comma separated list of files to
+	be splitted.
 	'''
-	srcprefix = settings.get('data', 'srcprefix')
-	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+'src*.uv')
-	uvfiles = stdout[0].split('\n')[0:-1]
-	source_names = apercal.get_source_names(uvfiles[0])
+	path2vis = os.path.split(vis)[0]
+	vis = os.path.split(vis)[1]
+	logging.info("sbsplit: Splitting Visibility in Subbands")
+	if vis is None:
+		logger.error("Vis not specified. Check parameters.")
+	try: 
+		os.chdir(path2vis)
+		logging.info("Moved to path "+path2vis)
+	except:
+		logging.error("Error: path2vis does not exist!")
+		sys.exit(0)
 
-	for s in source_names:
-		print "Splitting ", s, " into subbands"
-		out, err = shrun("uvsplit vis="+settings.get('data', 'working')+s+".uv")
-		#print "Moving subbands into ", s
-		shrun("mkdir "+settings.get('data', 'working')+s)
-		#print "mkdir "+settings.get('data', 'working')+s
-		shrun("mv "+s.lower()+".* "+settings.get('data', 'working')+s+"/")
-		#print "mv "+s.lower()+".* "+settings.get('data', 'working')+s+"/"
-	print "Subband Split DONE"
-	return 1
+	for v in vis.split(','):
+		logging.info("Splitting "+v)
+		output = lib.masher(task='uvsplit', vis=v)
+	sb_names = [o.replace('Creating ', '') for o in output.split('\n')[3:-1]]	
+	# Assuming that the source name is the same for all SBs:
+	source_name = sb_names[0].split('.')[0]
+	if not os.path.exists(source_name):
+		logging.info("Making directory....")
+		lib.basher("mkdir "+source_name)
+	for sb in sb_names:
+		freq = sb.split('.')[1]
+		if not os.path.exists(source_name+"/"+freq):
+			logging.info("Making "+source_name+"/"+freq)	
+			lib.basher("mkdir "+source_name+"/"+freq)
+		logging.info("Moving "+sb+" to "+source_name+"/"+freq+"/vis")
+		lib.basher("mv "+sb+" "+source_name+"/"+freq+"/vis")
+	logging.info("sbsplit: Done!")
 
 def ms2uv(settings):
 	'''
@@ -245,6 +291,7 @@ def ms2uv(settings):
 	# First, do the calfiles.
 	calprefix = settings.get('data', 'calprefix')
 	calfiles = settings.get('data', 'calfiles')
+	print 
 	for i in range(0, len(calfiles)):
 		# NOTE: MS2UVFITS: MS -> UVFITS (in rawdata)
 		msfile = settings.get('data', 'rawdata') + calfiles[i]
@@ -278,20 +325,20 @@ def quack(uv):
 	o = quack.snarf()
 	return o 
 
-def sflag(settings, prefix):
+def flagnquack(settings, prefix):
 	'''
-	sflags(settings, prefix) 
+	flagnquacks(settings, prefix) 
 	UVFLAG the static flags in the files defined by the given <prefix> - e.g. cal or src.
 	This refers to the prefix that you have assigned to the file, and **not** the name of the
 	variable. 
 	'''
 	# NOTE: Need to get the names of the calfiles.
-	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+prefix+'*')
+	stdout = lib.basher('ls -d '+settings.get('data', 'working')+prefix+'*')
 	uvfiles = stdout[0].split('\n')[0:-1]
 	for i in range(0, len(uvfiles)):
 		uvfile = settings.get('data', 'working') + prefix + str(i+1) + '.uv'		
-		uvflag(uvfile, settings.get('flag', 'sflags'))
-		out, err = shrun("qvack vis="+uvfile+" mode=source")
+		uvflag(uvfile, settings.get('flag', 'flagnquacks'))
+		out, err = basher("qvack vis="+uvfile+" mode=source")
 		#print out, err
 		print "Flagged and Quacked ", uvfile
 		
@@ -305,7 +352,7 @@ def cal2srcs(settings, cal='cal1.uv'):
 	cal = settings.get('data', 'working')+cal
 	srcprefix = settings.get('data', 'srcprefix')
 	srcfiles = settings.get('data', 'srcfiles')
-	stdout = apercal.shrun('ls -d '+settings.get('data', 'working')+'src*.uv')
+	stdout = apercal.basher('ls -d '+settings.get('data', 'working')+'src*.uv')
 	uvfiles = stdout[0].split('\n')[0:-1]
 	o = []
 	for s in uvfiles:

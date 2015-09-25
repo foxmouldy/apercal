@@ -1,12 +1,55 @@
 import mirexecb
 import mirexecb as mirexec
+import logging
 from ConfigParser import SafeConfigParser
 import subprocess
 import mynormalize
 import pylab as pl
 import os 
 import sys
-#import mselfcal
+import logging
+# Needs astropy for querying the NVSS
+from astroquery.vizier import Vizier
+from astropy.coordinates import Angle, ICRS, Distance, SkyCoord
+import astropy.coordinates as coord
+from astropy import units as u
+from astropy.io import ascii
+deg2rad = pl.pi/180.
+
+def write2file(header, text2write, file2write):
+	'''
+	write2file writes the output of some task to a textfile.
+	'''
+	f = open(file2write, 'a')
+	f.writelines(header)			
+	f.writelines('\n')
+	for t in text2write.split('\n'):
+            f.writelines(t+'\n')
+	f.writelines('\n---- \n')
+	f.close()
+
+def setup_logger(level='info'):
+	logger = logging.getLogger()
+	logging.basicConfig(format='%(levelname)s: %(message)s ')
+	if level=='info':
+		logger.setLevel(logging.INFO)
+	if level=='debug':
+		logger.setLevel(logging.DEBUG)
+	return logger
+
+class FatalMiriadError(Exception):
+    '''
+    Custom  Exception for Fatal MIRIAD Errors
+    '''
+    def __init__(self, error=None):
+        if error is None:
+            self.message = "Fatal MIRIAD Task Error"
+        else:
+            self.message = "Fatal MIRIAD Task Error: \n"+error
+        
+        super(FatalMiriadError, self).__init__(self.message)
+	
+	sys.exit(self.message)
 
 def exceptioner(O, E):
     '''
@@ -15,12 +58,7 @@ def exceptioner(O, E):
     '''
     for e in E.split('\n'):
         if "FATAL" in e.upper()>0:
-            print O
-            print "\n"
-            print "FATALITY -> Task has ended horribly XP"
-            print E
-            sys.exit(0)
-
+		raise FatalMiriadError(E)
 
 def str2bool(s):
     if s.upper() == 'TRUE' or s.upper()=="T" or s.upper()=="Y":
@@ -39,39 +77,44 @@ def mkdir(path):
         print path
         print os.path.exists(path)
         print 'Making Path'
-        o, e = shrun('mkdir '+path)
+        o, e = basher('mkdir '+path)
         print o, e
             
-def mirrun(task=None, verbose=False, **kwargs):
+def masher(task=None, **kwargs):
     '''
-    mirrun - Miriad Task Runner
-    Usage: mirrun(task='sometask', arg1=val1, arg2=val2)
-    Example: mirrun(task='invert', vis='/home/frank/test.uv/', options='mfs,double', ...)
+    masher - Miriad Task Runner
+    Usage: masher(task='sometask', arg1=val1, arg2=val2)
+    Example: masher(task='invert', vis='/home/frank/test.uv/', options='mfs,double', ...)
     Each argument is passed to the task through the use of the keywords. 
     '''
     if task!=None:
         argstr = " "
         for k in kwargs.keys():
             if str(kwargs[k]).upper()!='NONE':
-                
                 argstr += k + '=' + str(kwargs[k])+ ' '
-        cmd = task + argstr
-        out, err = shrun(cmd)        
-        if verbose!=False:
-               print cmd
-               print out, err
-        return out, err
-    else:
-        print "Usage = mirrun(task='sometask', arg1=val1, arg2=val2...)"
 
-def shrun(cmd):
+        cmd = task + argstr
+        out, err = basher(cmd)        
+        logging.debug(cmd)
+        exceptioner(out, err)
+	logging.info(out)
+        return out
+    else:
+        print "Usage = masher(task='sometask', arg1=val1, arg2=val2...)"
+
+def basher(cmd):
 	'''
-	shrun: shell run - helper function to run commands on the shell.
+	basher: shell run - helper function to run commands on the shell.
 	'''
-	#print cmd
+	logging.debug(cmd)
 	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
         	stderr = subprocess.PIPE, shell=True)
 	out, err = proc.communicate()
+	
+	if len(out)>0:
+		logging.debug(out)
+	if len(err)>0:
+		logging.warning(err)
 	# NOTE: Returns the STD output.
 	return out, err
 
@@ -124,32 +167,39 @@ class settings:
         Output the settings, by section if necessary.
         '''
         parser = self.parser
-        if section!=None:
-            print "["+section+"]"
-            for p in parser.items(section):
-                print p[0], " : ", p[1]
-            print "\n"
-        else:
-            for s in parser.sections ():
-                print "["+s+"]"
-                for p in parser.items(s):
-                    print p[0], " : ", p[1]
-                print "\n"	
-    def get(self, section, keyword=None):
+	try:
+        	if section!=None:
+        	    print "["+section+"]"
+        	    for p in parser.items(section):
+        	        print p[0], " : ", p[1]
+        	    print "\n"
+        	else:
+        	    for s in parser.sections ():
+        	        print "["+s+"]"
+        	        for p in parser.items(s):
+        	            print p[0], " : ", p[1]
+        	        print "\n"	
+	except:
+		logging.error("Settings - Section doesn't exist.")
+
+    def get(self, section=None, keyword=None):
         parser = self.parser
-        if keyword!=None:
-            if len(parser.get(section, keyword).split(','))>1:
-                return parser.get(section, keyword).split(',')
-            else:
-                return parser.get(section, keyword)
-        else:
-            return get_params(parser, section)
-    
+	try:
+        	if section is not None and keyword is not None:
+        	    if len(parser.get(section, keyword).split(';'))>1:
+        	        return parser.get(section, keyword).split(';')
+        	    else:
+        	        return parser.get(section, keyword)
+        	else:
+        	    return get_params(parser, section)
+	except:
+		logging.error("Settings - Either section or keyword does not exist.")
+
     def update(self):
         '''
         Read the file again. 
         '''
-        print "Updated"
+        logging.info("Settings - Updated.")
         self.parser.read(self.filename)
                
     def save(self):
@@ -185,7 +235,7 @@ def ms2uvfits(inms=None, outuvf=None):
 	if outuvf==None:
 		outuvf = inms.replace(".MS", ".UVF")
 	cmd = "ms2uvfits ms="+inms+" fitsfile="+outuvf+" writesyscal=T multisource=T combinespw=T"
-	shrun(cmd)	
+	basher(cmd)	
 	print inms, "--> ms2uvfits --> ", outuvf
 
 def iteri(params, i):
@@ -263,8 +313,8 @@ def invertr(params):
         invert.select = params.select
     if params.line!='':
         invert.line = params.line
-    shrun('rm -r '+params.map)
-    shrun('rm -r '+params.beam)
+    basher('rm -r '+params.map)
+    basher('rm -r '+params.beam)
     invert.map = params.map
     invert.beam = params.beam
     invert.options = params.options
@@ -286,7 +336,7 @@ def clean(params):
 		clean.niters = 100000
 	else:
 		clean.niters = 1000
-	shrun('rm -r '+params.model)
+	basher('rm -r '+params.model)
 	clean.out = params.model 
 	tout = clean.snarf()
 	#print ("\n".join(map(str, tout[0])))
@@ -304,11 +354,11 @@ def restor(params, mode='clean'):
 		restor.out = params.image
 		restor.mode = 'clean'
 
-	shrun('rm -r '+restor.out)
+	basher('rm -r '+restor.out)
 	tout = restor.snarf()
 	
 def maths(image, cutoff, mask):
-	shrun('rm -r '+mask)
+	basher('rm -r '+mask)
 	maths = mirexec.TaskMaths()
 	maths.exp = '<'+image+'>'
 	maths.mask = '<'+image+'>'+".gt."+str(cutoff)
@@ -321,7 +371,141 @@ def uvflag(vis, select, flagval='flag'):
     '''
     path = os.path.split(vis)
     os.chdir(path[0])
-    O, E = mirrun(task = 'uvflag', vis = path[1], select=select, flagval = flagval)
+    O, E = masher(task = 'uvflag', vis = path[1], select=select, flagval = flagval)
     if len(E)>1:
         sys.exit(E)
     
+##############################################################
+# The following sections are for querying the NVSS
+
+def ann_writer(options, x):
+	annfile = options.outfile+'.ann'
+	ann = open(annfile, 'w')
+	ann.writelines("COORD W\n")
+	ann.writelines("PA STANDARD\n")
+	ann.writelines("COLOR ORANGE\n")
+	ann.writelines("FONT hershey14\n")
+	for i in range(0,len(x)):
+		line = "CROSS "+str(x[i]["_RAJ2000"])+" "+str(x[i]["_DEJ2000"])+" 0.05 0.05 45.\n"
+		ann.writelines(line)
+	ann.close()
+
+
+def fixra(ra0):
+	R = ''
+	s = 0
+	for i in ra0:
+		if i==':':
+			if s==0:
+				R+='h'
+				s+=1
+			else:
+				R+='m'
+		else:
+			R+=i
+	return R
+
+def getradec(infile):
+	'''
+	getradec: module to extract the pointing centre ra and dec from a miriad image file. Uses
+	the PRTHD task in miriad
+	inputs: infile (name of file)
+	returns: c, an instance of the astropy.coordinates SkyCoord class which has a few convenient
+	attributes.
+	'''
+	o, e = masher(task='prthd', in_=infile)
+	#prthd = mirexec.TaskPrintHead()
+	#prthd.in_ = infile
+	#p = prthd.snarf()
+	rastring = [s for s in p[0] if "RA---" in s]
+	decstring = [s for s in p[0] if "DEC--" in s]
+	print rastring
+	ra0 = rastring[0][15:32].replace(' ','')
+	ra0 = list(ra0)
+	ra0 = fixra(ra0)
+	dec0 = decstring[0][15:32].replace(' ','')
+	coords = [ra0, dec0]
+	c = SkyCoord(ICRS, ra=ra0, dec=dec0, unit=(u.deg,u.deg))
+	return c
+
+def query_nvss(options, ra0, dec0, s=">0.0", proj='SIN'):
+	'''
+	query_nvss: module which queries the NVSS using the Vizier protocol. 
+	inputs: ra0, dec0, s="<20"
+	ra0 = the central ra in degrees
+	dec0 = the central dec in degrees
+	s = the flux cutoff
+	returns L, M (relative coordinates in degrees), N (number of sources), S (1.4GHz Flux
+	Density in mJy)
+	'''
+	v = Vizier(column_filters={"S1.4":s})
+	v.ROW_LIMIT = 10000
+	result = v.query_region(coord.SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg), frame='icrs'), 
+	    radius=Angle(1, "deg"), catalog='NVSS')
+	ra = result[0]['_RAJ2000']
+	dec = result[0]['_DEJ2000']
+	N = len(result[0])
+	if proj.upper()=='SIN':
+		L = (ra-ra0)*pl.cos(dec*deg2rad)
+		M = dec-dec0
+	if proj.upper()=='NCP':
+		L = 57.2957795*pl.cos(deg2rad*dec)*pl.sin(deg2rad*(ra-ra0))
+		M = 57.2957795*(pl.cos(deg2rad*dec0) - pl.cos(deg2rad*dec)*pl.cos(deg2rad*(ra-ra0)))/pl.sin(deg2rad*dec0) 
+	S = result[0]['S1.4']
+	ascii.write(result[0], options.outfile+'.dat', format='tab') 
+	ann_writer(options, result[0])
+	return L, M, N, S
+
+def mk_lsm(options):
+	'''
+	mk_lsm: The module that makes the NVSS LSM using the miriad task IMGEN.
+	Needs options.infile (template) and options.outfile (name of output point source model)
+	'''
+
+	# NOTE: Classic cos^6 model of the WSRT PB used to calculate apparent fluxes. Here we use c=68.
+	PB = lambda c, v, r: (pl.cos(c*v*r))**6
+
+	# NOTE: Grab the central coordinates from the template file. 
+	c = getradec(options.infile)
+	print c
+	ra0 = c.ra.deg
+	dec0 = 	c.dec.deg
+
+	# NOTE: Query the NVSS around the central pointing
+	L, M, N, S = query_nvss(options, ra0, dec0, s='>10.', proj='NCP')
+	L_asec = L*3600.
+	M_asec = M*3600.
+	pl.scatter(L_asec, M_asec, c=S*1000, s=S)
+	pl.xlabel('L offset (arcsec)')
+	pl.ylabel('M offset (arcsec)')
+	pl.colorbar()
+	pl.savefig(options.infile+'-nvss-lsm.pdf', dpi=300)
+	pl.close()
+	n = 20 
+	modfiles = ''
+	# NOTE: Make the LSM!
+	imgen = mirexec.TaskImGen()
+	for j in range(0,1+N/n):
+		imgen.in_ = options.infile
+		imgen.out = 'tmod'+str(j)
+		os.system('rm -r '+str(imgen.out))
+		objs = ''
+		spars = ''
+		for i in range(0,n):
+			if (i+j*n<N):
+				objs+= 'point,'
+			  	d2point = L[i+j*n]**2+M[i+j*n]**2
+			    	S_app = S[i+j*n]*PB(c=68, v=1.420, r=d2point)
+			    	spars+= str(S_app/1e3)+','+str(L_asec[i+j*n])+','+str(M_asec[i+j*n])+','
+		imgen.factor=0
+		imgen.object = objs[:-1]
+		imgen.spar = spars[:-1]
+		imgen.snarf()
+		modfiles+='<'+imgen.out+'>+'
+	maths = mirexec.TaskMaths()
+	maths.exp = modfiles[0:-1]
+	os.system('rm -r '+options.outfile)
+	maths.out = options.outfile
+	maths.snarf()
+	os.system('rm -r tmod*')
+ 

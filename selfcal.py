@@ -235,6 +235,9 @@ def mkim0(settings, lpars):
 
 
 class selfcal_main(threading.Thread):
+	"""
+	This is the main class that does the selfcal.
+	"""
 	def __init__(self, vis, settings):
 		threading.Thread.__init__(self)
 		# NOTE: Now params is just the mpars defined below, which is a unit of spars. I use

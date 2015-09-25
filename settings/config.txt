@@ -1,0 +1,32 @@
+[crosscal]
+msfiles = 10102953.MS,10102954.MS,10102955.MS
+cals = 3C147,CTD93
+srcs = 3C293 
+flags = an(6),shadow(25),auto
+refant = 2
+flagpar = 5,4,4,4,5,3;3,2,2,2,3,2
+select = ''
+edge = 10,18
+log = log.txt
+stokes = qq
+
+[selfcal]
+vis = src.uv_wa
+tag = src.uv_wa
+interval = 1000
+select = -auto,-uvrange(0,0.5)
+nloops = 2
+robust = -2.0
+line = channel,100,11,1,1
+sopts = mfs,amp
+iopts = mfs,double
+fwhm=''
+clip=-1
+cutoff = 1e-2
+c0 = 5.
+dc = 20.
+nsigma=1.
+inttime=720.
+tsys = 30.
+bw = 10.
+nants=13
