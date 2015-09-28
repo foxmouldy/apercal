@@ -1,4 +1,4 @@
-#Friday, 25 September 2015
+#Monday, 28 September 2015
 import mirexecb
 import mirexecb as mirexec
 import logging
@@ -16,6 +16,8 @@ import astropy.coordinates as coord
 from astropy import units as u
 from astropy.io import ascii
 deg2rad = pl.pi/180.
+# Its rather messy to reload the logging library, but is necessary if the logger is going to work.
+reload(logging)
 
 def write2file(header, text2write, file2write):
     '''
@@ -29,14 +31,32 @@ def write2file(header, text2write, file2write):
     f.writelines('\n---- \n')
     f.close()
 
-def setup_logger(level='info'):
+def setup_logger(level='info', logfile=None):
     logger = logging.getLogger()
-    logging.basicConfig(format='%(levelname)s: %(message)s ')
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False 
+    
+    fh_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
+            datefmt='%m/%d/%Y %I:%M:%S %p')
+    if logfile is None:
+        fh = logging.FileHandler('log_filename.txt')
+    else:
+        fh = logging.FileHandler(logfile)
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(fh_formatter)
+    logger.addHandler(fh)
+    
+    ch_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    ch = logging.StreamHandler()
     if level=='info':
-        logger.setLevel(logging.INFO)
-    if level=='debug':
-        logger.setLevel(logging.DEBUG)
+        ch.setLevel(logging.INFO)
+    if level=='debug':    
+        ch.setLevel(logging.DEBUG)
+    ch.setFormatter(ch_formatter)
+    logger.addHandler(ch)
+    logger.info("Logging started!")
     return logger
+
 
 class FatalMiriadError(Exception):
     '''
@@ -47,10 +67,8 @@ class FatalMiriadError(Exception):
             self.message = "Fatal MIRIAD Task Error"
         else:
             self.message = "Fatal MIRIAD Task Error: \n"+error
-
         super(FatalMiriadError, self).__init__(self.message)
-
-    sys.exit(self.message)
+        sys.exit(self.message)
 
 def exceptioner(O, E):
     '''
@@ -59,7 +77,7 @@ def exceptioner(O, E):
     '''
     for e in E.split('\n'):
         if "FATAL" in e.upper()>0:
-        raise FatalMiriadError(E)
+            raise FatalMiriadError(E)
 
 def str2bool(s):
     if s.upper() == 'TRUE' or s.upper()=="T" or s.upper()=="Y":
@@ -88,6 +106,7 @@ def masher(task=None, **kwargs):
     Example: masher(task='invert', vis='/home/frank/test.uv/', options='mfs,double', ...)
     Each argument is passed to the task through the use of the keywords.
     '''
+    logger = logging.getLogger('masher')
     if task!=None:
         argstr = " "
         for k in kwargs.keys():
@@ -95,27 +114,34 @@ def masher(task=None, **kwargs):
                 argstr += k + '=' + str(kwargs[k])+ ' '
 
         cmd = task + argstr
-        out, err = basher(cmd)
-        logging.debug(cmd)
+        logger.debug(cmd)
+        if ("-k" in cmd) is True:
+            out, err = basher(cmd, showasinfo=True)
+        else:
+            out, err = basher(cmd, showasinfo=False)
         exceptioner(out, err)
-    logging.info(out)
+        # Used to log twice. Not anymore!
         return out
     else:
         print "Usage = masher(task='sometask', arg1=val1, arg2=val2...)"
 
-def basher(cmd):
+def basher(cmd, showasinfo=False):
     '''
     basher: shell run - helper function to run commands on the shell.
     '''
-    logging.debug(cmd)
+    logger = logging.getLogger('basher')
+    logger.debug(cmd)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
             stderr = subprocess.PIPE, shell=True)
     out, err = proc.communicate()
 
     if len(out)>0:
-        logging.debug(out)
+        if showasinfo==True:
+            logger.info("Command = "+out)
+        else:
+            logger.debug("Command = "+out)
     if len(err)>0:
-        logging.warning(err)
+        logger.warning(err)
     # NOTE: Returns the STD output.
     return out, err
 
@@ -159,7 +185,6 @@ class settings:
         parser = self.parser
         for k in kwds:
             parser.set(section, k, kwds[k])
-        self.show(section=section)
         self.save()
 
     def show(self, section=None):
@@ -167,25 +192,27 @@ class settings:
         settings.show(section=None)
         Output the settings, by section if necessary.
         '''
+        logger = logging.getLogger('settings.show') 
         parser = self.parser
-    try:
-            if section!=None:
-                print "["+section+"]"
-                for p in parser.items(section):
-                    print p[0], " : ", p[1]
-                print "\n"
-            else:
-                for s in parser.sections ():
-                    print "["+s+"]"
-                    for p in parser.items(s):
+        try:
+                if section!=None:
+                    print "["+section+"]"
+                    for p in parser.items(section):
                         print p[0], " : ", p[1]
                     print "\n"
-    except:
-        logging.error("Settings - Section doesn't exist.")
+                else:
+                    for s in parser.sections ():
+                        print "["+s+"]"
+                        for p in parser.items(s):
+                            print p[0], " : ", p[1]
+                        print "\n"
+        except:
+            logger.error("Settings - Section doesn't exist.")
 
     def get(self, section=None, keyword=None):
+        logger = logging.getLogger('settings.get')
         parser = self.parser
-    try:
+        try:
             if section is not None and keyword is not None:
                 if len(parser.get(section, keyword).split(';'))>1:
                     return parser.get(section, keyword).split(';')
@@ -193,14 +220,15 @@ class settings:
                     return parser.get(section, keyword)
             else:
                 return get_params(parser, section)
-    except:
-        logging.error("Settings - Either section or keyword does not exist.")
+        except:
+            logger.error("Settings - Either section or keyword does not exist.")
 
     def update(self):
         '''
         Read the file again.
         '''
-        logging.info("Settings - Updated.")
+        logger = logging.getLogger('settings.update')  
+        logger.info("Settings - Updated.")
         self.parser.read(self.filename)
 
     def save(self):
@@ -492,9 +520,9 @@ def mk_lsm(options):
         for i in range(0,n):
             if (i+j*n<N):
                 objs+= 'point,'
-                  d2point = L[i+j*n]**2+M[i+j*n]**2
-                    S_app = S[i+j*n]*PB(c=68, v=1.420, r=d2point)
-                    spars+= str(S_app/1e3)+','+str(L_asec[i+j*n])+','+str(M_asec[i+j*n])+','
+                d2point = L[i+j*n]**2+M[i+j*n]**2
+                S_app = S[i+j*n]*PB(c=68, v=1.420, r=d2point)
+                spars+= str(S_app/1e3)+','+str(L_asec[i+j*n])+','+str(M_asec[i+j*n])+','
         imgen.factor=0
         imgen.object = objs[:-1]
         imgen.spar = spars[:-1]
