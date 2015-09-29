@@ -11,8 +11,7 @@ import subprocess
 import lib
 import os
 import logging
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
-
+logger = logging.getLogger('selfcal')
 #Check if PyBDSM is installed
 try:
 	imp.find_module('lofar')

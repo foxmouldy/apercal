@@ -12,151 +12,11 @@ import sys
 import os
 import logging
 import lib
-# TODO: Replace global params.
-logger = logging.getLogger()
+logger = logging.getLogger('crosscal')
 
 def dummy(message1, message2):
     logger.info(message1)
     logger.debug(message2)
-
-def ms2uvfits(ms=None):
-    '''
-    ms2uvfits(ms=None)
-    Utility to convert ms to a uvfits file
-    '''
-    logger = logging.getLogger('ms2uvfits') 
-    # Setup the path and input file name.
-    path2ms = os.path.split(ms)[0]
-    ms = os.path.split(ms)[1]
-    logger.info("ms2uvfits: Converting MS to UVFITS Format")
-    if ms is None:
-        logger.error("MS not specified. Please check parameters")
-        sys.exit(0)
-    if path2ms!='':
-        try:
-            os.chdir(path2ms)
-            logger.info("Moved to path "+path2ms)
-        except:
-            logger.error("Error: Directory or MS does not exist!")
-            sys.exit(0)
-    
-    # Start the processing by setting up an output name and reporting the status.
-    uvfits = ms.replace(".MS", ".UVF")
-    if os.path.exists(uvfits):
-        logger.info(uvfits+" exists! Skipping this part....")
-        return 
-    # TODO: Decided whether to replace logger.info with logger.debug, since this module is
-    # wrapped up.
-    logger.info("MS: "+ms)
-    logger.info("UVFITS: "+uvfits)
-    logger.info("Directory: "+path2ms)
-    # NOTE: Here I'm using masher to call ms2uvfits.
-    o = lib.masher(task='ms2uvfits', ms=ms, fitsfile=uvfits, writesyscal='T',
-            multisource='T', combinespw='T')
-
-def importuvfitsys(uvfits=None, uv=None, tsys=True):
-    '''
-    Imports UVFITS file and does Tsys correction on the output MIRIAD UV file.
-    Uses the MIRIAD task WSRTFITS to import the UVFITS file and convert it to MIRIAD UV format.
-    Uses the MIRIAD task ATTSYS to do the Tsys correction.
-    '''
-    logger = logging.getLogger('importuvfitsys')
-    # NOTE: Import the fits file
-    path2uvfits = os.path.split(uvfits)[0]
-    uvfits = os.path.split(uvfits)[1]
-    if uv is None:
-        # Default output name if a custom name isn't provided.
-        uv = uvfits.split('.')[0]+'.UV'
-    if uvfits is None:
-        logger.error("UVFITS not specified. Please check parameters")
-        sys.exit(0)
-    if path2uvfits!='':
-        try:
-            os.chdir(path2uvfits)
-            logger.info("Moved to path "+path2uvfits)
-        except:
-            logger.error("Error: Directory or UVFITS file does not exist!")
-            sys.exit(0)
-    #cmd = 'wsrtfits in='+uvf+' op=uvin velocity=optbary out='+uv
-    if os.path.exists(uv):
-        logger.warn(uv+' exists! I won\'t clobber. Skipping this part...')
-        return
-    lib.masher(task='wsrtfits', in_=uvfits, out=uv, op='uvin', velocity='optbary')
-
-    # NOTE: Tsys Calibration
-    #basher("attsys vis="+uv+" out=temp")
-    if tsys is True:
-        lib.masher(task='attsys', vis=uv, out='temp')
-        lib.basher('rm -r '+uv)
-        lib.basher('mv temp '+uv);
-
-def uvflag(vis=None, select=None):
-    '''
-    vis: visibility file to be flagged
-    select: semi-colon separated list of data selections to be flagged
-    '''
-    # Setup the path and move to it.
-    logger = logging.getLogger('uvflag')
-    path2vis = os.path.split(vis)[0]
-    vis = os.path.split(vis)[1]
-    logger.info("uvflag: Flagging Tool")
-    if vis is None or select is None:
-        logger.error("Vis or Flagsnot specified. Check parameters.")
-        sys.exit(0)
-    try:
-        os.chdir(path2vis)
-        logger.info("Moved to path "+path2vis)
-    except:
-        logger.error("Error: path to vis does not exist!")
-        sys.exit(0)
-    # Flag each selection in a for-loop
-    for s in select.split(';'):
-        o = lib.masher(task='uvflag', vis=vis, select='"'+s+'"', flagval='flag')
-        logger.info(o)
-
-def pgflag(vis=None, flagpar='6,2,2,2,5,3', settings=None, stokes='qq'):
-    '''
-    Wrapper around the MIRIAD task PGFLAG, which in turn is a wrapper for the AOFlagger
-    SumThreshold algorithm.
-    Defaults:  flagpar='6,2,2,2,5,3',  stokes='qq'
-    Uses parameters from a settings object if this is provided.
-    Outputs are written to a log file, which is in the same directory as vis, and has name
-    <vis>.pgflag.txt.
-    Note: The considerably long output of PGFLAG is written out with the logger at debug level.
-    This may not be ideal if you're having a quick look, so switch the level to info if you want
-    to avoid the output of the task appearing in your console.
-    Beware: You could lose a LOT of data if you're not careful!!!
-    '''
-    # Exception handling and checking
-    logger = logging.getLogger('pgflag')
-    logger.info("PGFLAG: Automated Flagging using SumThresholding")
-    if vis is None and settings is None:
-        logger.error("No inputs - please provide either vis and flagpar or settings.")
-        sys.exit(0)
-    path2vis = os.path.split(vis)[0]
-    vis = os.path.split(vis)[1]
-    try:
-        os.chdir(path2vis)
-        logger.info("Moved to path "+path2vis)
-    except:
-        logger.error("Error: path to vis does not exist!")
-        sys.exit(0)
-
-    # Do pgflag with the settings parameters if provided.
-    if settings is not None and vis is not None:
-        params = settings.get('pgflag')
-        logger.info("Doing PGFLAG on "+vis+" using stokes="+params.stokes+" with flagpar="+params.flagpar)
-        logger.info("Output written to "+vis+'.pgflag.txt')
-        o = lib.masher(task='pgflag', vis=vis, stokes=params.stokes, flagpar=params.flagpar,
-                options='nodisp', command="'<'")
-    # Do PGFLAG with input settings, i.e. no settings file provided.
-    if vis is not None and settings is None:
-        logger.info("Doing PGFLAG on "+vis+" using stokes "+stokes+" with flagpar="+flagpar)
-        o = lib.masher(task='pgflag', vis=vis, stokes=stokes, flagpar=flagpar, options='nodisp', command="'<'")
-    logger.info("Writing output "+path2vis+'/'+vis+'.pgflag.txt')
-    lib.write2file('pgflag', o, vis+'.pgflag.txt')
-    logger.info("PGFLAG: DONE.")
-
 
 def calcals(settings=None):
     '''
@@ -246,12 +106,20 @@ def source_split(settings=None):
         logger.error("Error: path does not exist!")
         sys.exit(0)
     vises = settings.get('data', 'srcprefix')+'*.uv'
-    sources = lib.get_source_names(settings.get('data', 'srcs')[0])
+    try:
+        sources = lib.get_source_names(settings.get('data', 'srcs')[0])
+    except:
+        logger.critical("Source file not found?")
+        sys.exit(0)
     outvises = ''
     for s in sources:
         outvis = s+'.uv'
-        lib.masher(task='uvcat', vis=vises, select="'source("+s+")'", out=outvis)
-        outvises+=outvis+';'
+        if not os.path.exists(outvis):
+            lib.masher(task='uvcat', vis=vises, select="'source("+s+")'", out=outvis)
+            outvises+=outvis+';'
+        else:
+            logger.error(outvis+" already exists!")
+            break
     settings.set('data', srcsplit=outvises[0:-1])
     logger.info("source_split: appears to have ended successfully.")
 
@@ -267,6 +135,9 @@ def subband_split(settings=None, hanning=False):
     # been provided.
     logger = logging.getLogger('subband_split')
     logger.info("Subband Split: Source Splitting")
+    logger.warn("I will clobber your old files. Be warned!")
+    lib.query_yes_no("Do you really want to proceed?")
+    logger.info("Log messages about files found/overwritten is available on the DEBUG level.")
     if settings is None:
         logger.error("Inputs missing!")
         sys.exit(0)
@@ -293,24 +164,29 @@ def subband_split(settings=None, hanning=False):
     for vis in settings.get('data', 'srcsplit'):
         # Now we're going to sort these files in a directory structure.
         logger.info("Attempting to split "+path2vis+vis)
-        text_output = lib.masher(task='uvsplit', vis=vis)
+        text_output = lib.masher(task='uvsplit', vis=vis, options='clobber')
         for t in text_output.split('\n'):
             if "Creating" in t:
                 filename = t.replace('Creating ', '').replace(' ', '')
                 f = filename.split('.')
                 outdir = f[0]+'/'+f[1]
+
+                if os.path.exists(path2vis+outdir+'/vis'):
+                    logger.debug(path2vis+outdir+'/vis'+" exists. I'm going to remove this.")
+                    lib.basher('rm -r '+path2vis+outdir+'/vis')
+                settings.set(f[0], f[1], path2vis+outdir)
                 # Make the first level
                 if os.path.exists(path2vis+f[0]) is False:
                     logger.info('Making '+f[0])
                     lib.basher("mkdir "+f[0])
                 else:
-                    logger.warn('Found '+f[0])
+                    logger.debug('Found '+f[0])
                 # Make the second level
                 if os.path.exists(path2vis+outdir) is False:
                     logger.info("Making "+f[1])
                     lib.basher("mkdir "+outdir)
                 else:
-                    logger.warn("Found "+f[1]+" - You may be overwriting files here.")
+                    logger.debug("Found "+f[1])
                 # Move the original file into vis
                 # Hanning option
                 if hanning==True:
@@ -321,10 +197,9 @@ def subband_split(settings=None, hanning=False):
                     except:
                         lib.error("Task UVCAL Failed")
                 else:
-                    logger.info("No Hanning")
+                    logger.debug("No Hanning")
                     logger.info("Moving "+filename+" to "+outdir+'/vis')
                     lib.basher("mv "+filename+" "+outdir+'/vis')
-
 
     logger.info("subband_split: Appears to have ended successfully.")
 
@@ -359,13 +234,13 @@ def ms2uv(settings=None):
         # NOTE: MS2UVFITS: MS -> UVFITS (in rawdata)
         msfile = calfiles[i]
         logger.info("Converting "+msfile)
-        ms2uvfits(ms = msfile)
+        lib.ms2uvfits(ms = msfile)
         uvfitsfile = msfile.replace('.MS', '.UVF')
         #uvfile = settings.get('data', 'working') + calprefix + str(i+1) + '.uv'
         uvfile = calprefix + str(i+1) + '.uv'
         cals+=uvfile+";"
         # NOTE: UVFITS: rawdata/UVFITS -> working/UV
-        importuvfitsys(uvfitsfile, outpath+'/'+uvfile)
+        lib.importuvfitsys(uvfitsfile, outpath+'/'+uvfile)
     settings.set('data', cals=cals[0:-1])
 
     # Second, do the srcfiles.
@@ -376,12 +251,12 @@ def ms2uv(settings=None):
         # NOTE: MS2UVFITS: MS -> UVFITS (in rawdata)
         msfile = srcfiles[i]
         logger.info("Converting "+msfile)
-        ms2uvfits(ms = msfile)
+        lib.ms2uvfits(ms = msfile)
         uvfitsfile = msfile.replace('.MS', '.UVF')
         uvfile = srcprefix + str(i+1) + '.uv'
         srcs+= uvfile+';'
         # NOTE: UVFITS: rawdata/UVFITS -> working/UV
-        importuvfitsys(uvfitsfile, outpath+'/'+uvfile)
+        lib.importuvfitsys(uvfitsfile, outpath+'/'+uvfile)
      
     settings.set('data', srcs=srcs[0:-1])
     logger.info('ms2uv: Appears to have ended successfully.')

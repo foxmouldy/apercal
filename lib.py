@@ -4,11 +4,9 @@ import mirexecb as mirexec
 import logging
 from ConfigParser import SafeConfigParser
 import subprocess
-import mynormalize
 import pylab as pl
 import os
 import sys
-import logging
 # Needs astropy for querying the NVSS
 from astroquery.vizier import Vizier
 from astropy.coordinates import Angle, ICRS, Distance, SkyCoord
@@ -17,7 +15,9 @@ from astropy import units as u
 from astropy.io import ascii
 deg2rad = pl.pi/180.
 # Its rather messy to reload the logging library, but is necessary if the logger is going to work.
+import lib
 reload(logging)
+
 
 def write2file(header, text2write, file2write):
     '''
@@ -111,7 +111,7 @@ def masher(task=None, **kwargs):
         argstr = " "
         for k in kwargs.keys():
             if str(kwargs[k]).upper()!='NONE':
-                argstr += k + '=' + str(kwargs[k])+ ' '
+                 argstr+= k + '=' + '"'+str(kwargs[k])+ '" '
 
         cmd = task + argstr
         logger.debug(cmd)
@@ -120,7 +120,6 @@ def masher(task=None, **kwargs):
         else:
             out, err = basher(cmd, showasinfo=False)
         exceptioner(out, err)
-        # Used to log twice. Not anymore!
         return out
     else:
         print "Usage = masher(task='sometask', arg1=val1, arg2=val2...)"
@@ -152,18 +151,18 @@ def get_source_names(vis=None):
     sources from a MIRIAD visibility file.
     '''
     if vis!=None:
-        uvindex = mirexecb.TaskUVIndex ()
-        uvindex.vis = vis
-        u = uvindex.snarf ()
-        i = [i for i in range(0,len(u[0])) if "pointing" in u[0][i]]
-        N = len(u[0])
-        s_raw = u[0][int(i[0]+2):N-2]
+        u = lib.masher(task='uvindex', vis=vis)
+        u = u.split('\n')
+        i = [i for i in range(0,len(u)) if "pointing" in u[i]]
+        N = len(u)
+        s_raw = u[int(i[0]+2):N-2]
         sources = []
         for s in s_raw:
             sources.append(s.replace('  ', ' ').split(' ')[0])
-        return sources
+        return sources[0:-1]
     else:
-        print "get_source_names needs a vis!"
+        logger.critical("get_source_names needs a vis!")
+        sys.exit(0)
 
 class Bunch:
     def __init__(self, **kwds):
@@ -177,14 +176,19 @@ class settings:
         self.parser = SafeConfigParser ()
         self.parser.read(self.filename)
 
-    def set(self, section, **kwds):
+    def set(self, section, *args, **kwds):
         '''
         settings.set(section, keyword1=value1, keyword2=value2)
         Change settings using this method.
         '''
         parser = self.parser
-        for k in kwds:
-            parser.set(section, k, kwds[k])
+        if section not in parser.sections():
+            parser.add_section(section)
+        if not kwds:
+            parser.set(section, args[0], args[1])
+        else:
+            for k in kwds:
+                parser.set(section, k, kwds[k])
         self.save()
 
     def show(self, section=None):
@@ -198,13 +202,13 @@ class settings:
                 if section!=None:
                     print "["+section+"]"
                     for p in parser.items(section):
-                        print p[0], " : ", p[1]
+                        print p[0], " = ", p[1]
                     print "\n"
                 else:
                     for s in parser.sections ():
                         print "["+s+"]"
                         for p in parser.items(s):
-                            print p[0], " : ", p[1]
+                            print p[0], " = ", p[1]
                         print "\n"
         except:
             logger.error("Settings - Section doesn't exist.")
@@ -253,284 +257,172 @@ def get_params(config_parser, section):
         setattr(params, p[0], p[1])
     return params
 
-def ms2uvfits(inms=None, outuvf=None):
+def ms2uvfits(ms=None):
     '''
-    ms2uvfits(inms=None, outuvf=None)
-    Utility to convert inms to outuvf in the same directory. If outuvf is not specified, then
-    inms is used with .MS replaced with .UVF.
+    ms2uvfits(ms=None)
+    Utility to convert ms to a uvfits file
     '''
-    if outuvf==None:
-        outuvf = inms.replace(".MS", ".UVF")
-    cmd = "ms2uvfits ms="+inms+" fitsfile="+outuvf+" writesyscal=T multisource=T combinespw=T"
-    basher(cmd)
-    print inms, "--> ms2uvfits --> ", outuvf
+    logger = logging.getLogger('ms2uvfits') 
+    # Setup the path and input file name.
+    path2ms = os.path.split(ms)[0]
+    ms = os.path.split(ms)[1]
+    logger.info("ms2uvfits: Converting MS to UVFITS Format")
+    if ms is None:
+        logger.error("MS not specified. Please check parameters")
+        sys.exit(0)
+    if path2ms!='':
+        try:
+            os.chdir(path2ms)
+            logger.info("Moved to path "+path2ms)
+        except:
+            logger.error("Error: Directory or MS does not exist!")
+            sys.exit(0)
+    
+    # Start the processing by setting up an output name and reporting the status.
+    uvfits = ms.replace(".MS", ".UVF")
+    if os.path.exists(uvfits):
+        logger.error(uvfits+" exists! Skipping this part....")
+        return 
+    # TODO: Decided whether to replace logger.info with logger.debug, since this module is
+    # wrapped up.
+    logger.info("MS: "+ms)
+    logger.info("UVFITS: "+uvfits)
+    logger.info("Directory: "+path2ms)
+    # NOTE: Here I'm using masher to call ms2uvfits.
+    o = lib.masher(task='ms2uvfits', ms=ms, fitsfile=uvfits, writesyscal='T',
+            multisource='T', combinespw='T')
 
-def iteri(params, i):
-    params.map = params.vis+'_map'+str(i)
-    params.beam = params.vis+'_beam'+str(i)
-    params.mask = params.vis+'_mask'+str(i)
-    params.model = params.vis+'_model'+str(i)
-    params.image = params.vis+'_image'+str(i)
-    params.lsm = params.vis+'_lsm'+str(i)
-    params.residual = params.vis+'_residual'+str(i)
-    return params
+def importuvfitsys(uvfits=None, uv=None, tsys=True):
+    '''
+    Imports UVFITS file and does Tsys correction on the output MIRIAD UV file.
+    Uses the MIRIAD task WSRTFITS to import the UVFITS file and convert it to MIRIAD UV format.
+    Uses the MIRIAD task ATTSYS to do the Tsys correction.
+    '''
+    logger = logging.getLogger('importuvfitsys')
+    # NOTE: Import the fits file
+    path2uvfits = os.path.split(uvfits)[0]
+    uvfits = os.path.split(uvfits)[1]
+    if uv is None:
+        # Default output name if a custom name isn't provided.
+        uv = uvfits.split('.')[0]+'.UV'
+    if uvfits is None:
+        logger.error("UVFITS not specified. Please check parameters")
+        sys.exit(0)
+    if path2uvfits!='':
+        try:
+            os.chdir(path2uvfits)
+            logger.info("Moved to path "+path2uvfits)
+        except:
+            logger.error("Error: Directory or UVFITS file does not exist!")
+            sys.exit(0)
+    #cmd = 'wsrtfits in='+uvf+' op=uvin velocity=optbary out='+uv
+    if os.path.exists(uv):
+        logger.warn(uv+' exists! I won\'t clobber. Skipping this part...')
+        return
+    lib.masher(task='wsrtfits', in_=uvfits, out=uv, op='uvin', velocity='optbary')
 
-def mkim(settings0):
-    '''
-    Makes the 0th image.
-    '''
-    #print "Making Initial Image"
-    params = settings0.get('image')
-    os.chdir(settings0.get('data', 'working'))
-    #params.vis = settings0.get('data', 'working') + params.vis
-    params.vis = params.vis
-    params = iteri(params, 0)
-    invout = invertr(params)
-    print "Done INVERT"
-    immax, imunits = getimmax(params.map)
-    maths(params.map, immax/float(params.c0), params.mask)
-    print "Done MATHS"
-    params.cutoff = get_cutoff(settings0, cutoff=immax/float(params.c0))
-    clean(params)
-    print "Done CLEAN"
-    restor(params)
-    print "Done RESTOR"
+    # NOTE: Tsys Calibration
+    #basher("attsys vis="+uv+" out=temp")
+    if tsys is True:
+        lib.masher(task='attsys', vis=uv, out='temp')
+        lib.basher('rm -r '+uv)
+        lib.basher('mv temp '+uv);
 
-def getimmax(image):
-    imstat = mirexec.TaskImStat()
-    imstat.in_ = image;
-    imstats = imstat.snarf();
-    immax = float(imstats[0][10][51:61]);
-    imunits = imstats[0][4];
-    return immax, imunits
+def uvflag(vis=None, select=None):
+    '''
+    vis: visibility file to be flagged
+    select: semi-colon separated list of data selections to be flagged
+    '''
+    # Setup the path and move to it.
+    logger = logging.getLogger('uvflag')
+    path2vis = os.path.split(vis)[0]
+    vis = os.path.split(vis)[1]
+    logger.info("uvflag: Flagging Tool")
+    if vis is None or select is None:
+        logger.error("Vis or Flagsnot specified. Check parameters.")
+        sys.exit(0)
+    try:
+        os.chdir(path2vis)
+        logger.info("Moved to path "+path2vis)
+    except:
+        logger.error("Error: path to vis does not exist!")
+        sys.exit(0)
+    # Flag each selection in a for-loop
+    for s in select.split(';'):
+        o = lib.masher(task='uvflag', vis=vis, select='"'+s+'"', flagval='flag')
+        logger.info(o)
 
-def get_cutoff(settings0, cutoff=1e-3):
+def pgflag(vis=None, flagpar='6,2,2,2,5,3', settings=None, stokes='qq'):
     '''
-    This uses OBSRMS to calculate the theoretical RMS in the image.
+    Wrapper around the MIRIAD task PGFLAG, which in turn is a wrapper for the AOFlagger
+    SumThreshold algorithm.
+    Defaults:  flagpar='6,2,2,2,5,3',  stokes='qq'
+    Uses parameters from a settings object if this is provided.
+    Outputs are written to a log file, which is in the same directory as vis, and has name
+    <vis>.pgflag.txt.
+    Note: The considerably long output of PGFLAG is written out with the logger at debug level.
+    This may not be ideal if you're having a quick look, so switch the level to info if you want
+    to avoid the output of the task appearing in your console.
+    Beware: You could lose a LOT of data if you're not careful!!!
     '''
-    params = settings0.get('obsrms')
-    obsrms = mirexecb.TaskObsRMS()
-    obsrms.tsys = params.tsys
-    obsrms.jyperk = 8.
-    obsrms.freq = 1.4 # Does not depend strongly on frequency
-    obsrms.theta = 12. # Maximum resolution in arcseconds
-    obsrms.nants = params.nants
-    obsrms.bw = params.bw # In MHz!
-    obsrms.inttime = params.inttime
-    obsrms.antdiam = 25.
-    rmsstr = obsrms.snarf()
-    rms = rmsstr[0][3].split(";")[0].split(":")[1].split(" ")[-2]
-    noise = float(params.nsigma)*float(rms)/1000.
-    # NOTE: Breakpoints to check your noise.
-    #print "Noise = ", noise
-    #print "cutoff = ", cutoff
-    if cutoff > noise:
-        # NOTE: More Breakpoints.
-        #print "cutoff > noise"
-        return cutoff
+    # Exception handling and checking
+    logger = logging.getLogger('pgflag')
+    logger.info("PGFLAG: Automated Flagging using SumThresholding")
+    if vis is None and settings is None:
+        logger.error("No inputs - please provide either vis and flagpar or settings.")
+        sys.exit(0)
+    path2vis = os.path.split(vis)[0]
+    vis = os.path.split(vis)[1]
+    try:
+        os.chdir(path2vis)
+        logger.info("Moved to path "+path2vis)
+    except:
+        logger.error("Error: path to vis does not exist!")
+        sys.exit(0)
+
+    # Do pgflag with the settings parameters if provided.
+    if settings is not None and vis is not None:
+        params = settings.get('pgflag')
+        logger.info("Doing PGFLAG on "+vis+" using stokes="+params.stokes+" with flagpar="+params.flagpar)
+        logger.info("Output written to "+vis+'.pgflag.txt')
+        o = lib.masher(task='pgflag', vis=vis, stokes=params.stokes, flagpar=params.flagpar,
+                options='nodisp', command="'<'")
+    # Do PGFLAG with input settings, i.e. no settings file provided.
+    if vis is not None and settings is None:
+        logger.info("Doing PGFLAG on "+vis+" using stokes "+stokes+" with flagpar="+flagpar)
+        o = lib.masher(task='pgflag', vis=vis, stokes=stokes, flagpar=flagpar, options='nodisp', command="'<'")
+    logger.info("Writing output "+path2vis+'/'+vis+'.pgflag.txt')
+    lib.write2file('pgflag', o, vis+'.pgflag.txt')
+    logger.info("PGFLAG: DONE.")
+
+def query_yes_no(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
     else:
-        # NOTE: More Breakpoints.
-        #print "cutoff < noise"
-        return noise
+        raise ValueError("invalid default answer: '%s'" % default)
 
-def invertr(params):
-    invert = mirexec.TaskInvert()
-    invert.vis = params.vis
-    if params.select!='':
-        invert.select = params.select
-    if params.line!='':
-        invert.line = params.line
-    basher('rm -r '+params.map)
-    basher('rm -r '+params.beam)
-    invert.map = params.map
-    invert.beam = params.beam
-    invert.options = params.options
-    invert.slop = 0.5
-    invert.stokes = 'ii'
-    invert.imsize = params.imsize
-    invert.cell = params.cell
-    invert.robust= params.robust
-    tout = invert.snarf()
-    return tout
-
-def clean(params):
-    clean = mirexec.TaskClean()
-    clean.map = params.map
-    clean.beam = params.beam
-    clean.cutoff = params.cutoff
-    if params.mask!=None:
-        clean.region='mask('+params.mask+')'
-        clean.niters = 100000
-    else:
-        clean.niters = 1000
-    basher('rm -r '+params.model)
-    clean.out = params.model
-    tout = clean.snarf()
-    #print ("\n".join(map(str, tout[0])))
-    return tout
-
-def restor(params, mode='clean'):
-    restor = mirexec.TaskRestore()
-    restor.beam = params.beam
-    restor.map = params.map
-    restor.model = params.model
-    if mode!='clean':
-        restor.out = params.residual
-        restor.mode = 'residual'
-    else:
-        restor.out = params.image
-        restor.mode = 'clean'
-
-    basher('rm -r '+restor.out)
-    tout = restor.snarf()
-
-def maths(image, cutoff, mask):
-    basher('rm -r '+mask)
-    maths = mirexec.TaskMaths()
-    maths.exp = '<'+image+'>'
-    maths.mask = '<'+image+'>'+".gt."+str(cutoff)
-    maths.out = mask
-    tout = maths.snarf()
-
-def uvflag(vis, select, flagval='flag'):
-    '''
-    Utility to flag your data
-    '''
-    path = os.path.split(vis)
-    os.chdir(path[0])
-    O, E = masher(task = 'uvflag', vis = path[1], select=select, flagval = flagval)
-    if len(E)>1:
-        sys.exit(E)
-
-##############################################################
-# The following sections are for querying the NVSS
-
-def ann_writer(options, x):
-    annfile = options.outfile+'.ann'
-    ann = open(annfile, 'w')
-    ann.writelines("COORD W\n")
-    ann.writelines("PA STANDARD\n")
-    ann.writelines("COLOR ORANGE\n")
-    ann.writelines("FONT hershey14\n")
-    for i in range(0,len(x)):
-        line = "CROSS "+str(x[i]["_RAJ2000"])+" "+str(x[i]["_DEJ2000"])+" 0.05 0.05 45.\n"
-        ann.writelines(line)
-    ann.close()
-
-def fixra(ra0):
-    R = ''
-    s = 0
-    for i in ra0:
-        if i==':':
-            if s==0:
-                R+='h'
-                s+=1
-            else:
-                R+='m'
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
         else:
-            R+=i
-    return R
-
-def getradec(infile):
-    '''
-    getradec: module to extract the pointing centre ra and dec from a miriad image file. Uses
-    the PRTHD task in miriad
-    inputs: infile (name of file)
-    returns: c, an instance of the astropy.coordinates SkyCoord class which has a few convenient
-    attributes.
-    '''
-    o, e = masher(task='prthd', in_=infile)
-    #prthd = mirexec.TaskPrintHead()
-    #prthd.in_ = infile
-    #p = prthd.snarf()
-    rastring = [s for s in p[0] if "RA---" in s]
-    decstring = [s for s in p[0] if "DEC--" in s]
-    print rastring
-    ra0 = rastring[0][15:32].replace(' ','')
-    ra0 = list(ra0)
-    ra0 = fixra(ra0)
-    dec0 = decstring[0][15:32].replace(' ','')
-    coords = [ra0, dec0]
-    c = SkyCoord(ICRS, ra=ra0, dec=dec0, unit=(u.deg,u.deg))
-    return c
-
-def query_nvss(options, ra0, dec0, s=">0.0", proj='SIN'):
-    '''
-    query_nvss: module which queries the NVSS using the Vizier protocol.
-    inputs: ra0, dec0, s="<20"
-    ra0 = the central ra in degrees
-    dec0 = the central dec in degrees
-    s = the flux cutoff
-    returns L, M (relative coordinates in degrees), N (number of sources), S (1.4GHz Flux
-    Density in mJy)
-    '''
-    v = Vizier(column_filters={"S1.4":s})
-    v.ROW_LIMIT = 10000
-    result = v.query_region(coord.SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg), frame='icrs'),
-        radius=Angle(1, "deg"), catalog='NVSS')
-    ra = result[0]['_RAJ2000']
-    dec = result[0]['_DEJ2000']
-    N = len(result[0])
-    if proj.upper()=='SIN':
-        L = (ra-ra0)*pl.cos(dec*deg2rad)
-        M = dec-dec0
-    if proj.upper()=='NCP':
-        L = 57.2957795*pl.cos(deg2rad*dec)*pl.sin(deg2rad*(ra-ra0))
-        M = 57.2957795*(pl.cos(deg2rad*dec0) - pl.cos(deg2rad*dec)*pl.cos(deg2rad*(ra-ra0)))/pl.sin(deg2rad*dec0)
-    S = result[0]['S1.4']
-    ascii.write(result[0], options.outfile+'.dat', format='tab')
-    ann_writer(options, result[0])
-    return L, M, N, S
-
-def mk_lsm(options):
-    '''
-    mk_lsm: The module that makes the NVSS LSM using the miriad task IMGEN.
-    Needs options.infile (template) and options.outfile (name of output point source model)
-    '''
-
-    # NOTE: Classic cos^6 model of the WSRT PB used to calculate apparent fluxes. Here we use c=68.
-    PB = lambda c, v, r: (pl.cos(c*v*r))**6
-
-    # NOTE: Grab the central coordinates from the template file.
-    c = getradec(options.infile)
-    print c
-    ra0 = c.ra.deg
-    dec0 =     c.dec.deg
-
-    # NOTE: Query the NVSS around the central pointing
-    L, M, N, S = query_nvss(options, ra0, dec0, s='>10.', proj='NCP')
-    L_asec = L*3600.
-    M_asec = M*3600.
-    pl.scatter(L_asec, M_asec, c=S*1000, s=S)
-    pl.xlabel('L offset (arcsec)')
-    pl.ylabel('M offset (arcsec)')
-    pl.colorbar()
-    pl.savefig(options.infile+'-nvss-lsm.pdf', dpi=300)
-    pl.close()
-    n = 20
-    modfiles = ''
-    # NOTE: Make the LSM!
-    imgen = mirexec.TaskImGen()
-    for j in range(0,1+N/n):
-        imgen.in_ = options.infile
-        imgen.out = 'tmod'+str(j)
-        os.system('rm -r '+str(imgen.out))
-        objs = ''
-        spars = ''
-        for i in range(0,n):
-            if (i+j*n<N):
-                objs+= 'point,'
-                d2point = L[i+j*n]**2+M[i+j*n]**2
-                S_app = S[i+j*n]*PB(c=68, v=1.420, r=d2point)
-                spars+= str(S_app/1e3)+','+str(L_asec[i+j*n])+','+str(M_asec[i+j*n])+','
-        imgen.factor=0
-        imgen.object = objs[:-1]
-        imgen.spar = spars[:-1]
-        imgen.snarf()
-        modfiles+='<'+imgen.out+'>+'
-    maths = mirexec.TaskMaths()
-    maths.exp = modfiles[0:-1]
-    os.system('rm -r '+options.outfile)
-    maths.out = options.outfile
-    maths.snarf()
-    os.system('rm -r tmod*')
+            sys.stdout.write("Please respond with 'yes' or 'no' "
+                             "(or 'y' or 'n').\n")

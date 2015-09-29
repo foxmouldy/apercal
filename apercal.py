@@ -15,7 +15,6 @@ import acos
 import acim
 import plot
 import mirplot
-import crosscal2
 import selfcal
 from ConfigParser import SafeConfigParser
 import subprocess
@@ -24,3 +23,5 @@ import pylab as pl
 import lib
 import os
 import tools
+import crosscal
+import image
