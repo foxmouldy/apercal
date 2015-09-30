@@ -75,7 +75,7 @@ def exceptioner(O, E):
     exceptioner(O, E) where O and E are the stdout outputs and errors.
     A simple and stupid way to do exception handling.
     '''
-    for e in E.split('\n'):
+    for e in E:
         if "FATAL" in e.upper()>0:
             raise FatalMiriadError(E)
 
@@ -111,18 +111,18 @@ def masher(task=None, **kwargs):
         argstr = " "
         for k in kwargs.keys():
             if str(kwargs[k]).upper()!='NONE':
-                 argstr+= k + '=' + '"'+str(kwargs[k])+ '" '
+                 argstr+= k + '=' + str(kwargs[k])+ ' '
 
         cmd = task + argstr
         logger.debug(cmd)
         if ("-k" in cmd) is True:
-            out, err = basher(cmd, showasinfo=True)
+            out = basher(cmd, showasinfo=True)
         else:
-            out, err = basher(cmd, showasinfo=False)
-        exceptioner(out, err)
+            out = basher(cmd, showasinfo=False)
         return out
     else:
-        print "Usage = masher(task='sometask', arg1=val1, arg2=val2...)"
+        logger.critical("Usage = masher(task='sometask', arg1=val1, arg2=val2...)")
+        sys.exit(0)
 
 def basher(cmd, showasinfo=False):
     '''
@@ -130,19 +130,28 @@ def basher(cmd, showasinfo=False):
     '''
     logger = logging.getLogger('basher')
     logger.debug(cmd)
+    # Replacing brackets so that bash won't complain.
+    #cmd = cmd.replace('""','"')
+    cmd = cmd.replace("(", "\(")
+    cmd = cmd.replace(")", "\)")
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
             stderr = subprocess.PIPE, shell=True)
     out, err = proc.communicate()
 
     if len(out)>0:
-        if showasinfo==True:
-            logger.info("Command = "+out)
+        if showasinfo:
+            logger.info("Command = "+cmd)
+            logger.info("\n"+out)
         else:
-            logger.debug("Command = "+out)
+            logger.debug("Command = "+cmd)
+            logger.info("\n"+out)
     if len(err)>0:
-        logger.warning(err)
+        logger.error(err)
     # NOTE: Returns the STD output.
-    return out, err
+    exceptioner(out, err)
+    logger.info("Returning output.")
+    # Standard output error are returned in a more convenient way
+    return out.split('\n')[0:-1]
 
 def get_source_names(vis=None):
     '''
@@ -152,7 +161,6 @@ def get_source_names(vis=None):
     '''
     if vis!=None:
         u = lib.masher(task='uvindex', vis=vis)
-        u = u.split('\n')
         i = [i for i in range(0,len(u)) if "pointing" in u[i]]
         N = len(u)
         s_raw = u[int(i[0]+2):N-2]
@@ -164,6 +172,21 @@ def get_source_names(vis=None):
         logger.critical("get_source_names needs a vis!")
         sys.exit(0)
 
+class miriad:
+    def __init__(self, task, **kwargs):
+        self.__dict__.update(kwargs)
+        self.task = task
+    def __getitem__(self, key):
+        return getattr(self, key)
+    def keywords(self):
+        lib.masher(task=self.task+" -kw")
+    def help(self):
+        lib.masher(task=self.task+" -k")
+    def go(self):
+        output = lib.masher(**self.__dict__)
+        logger = logging.getLogger(self.task)
+        logger.info('Completed.')
+        
 class Bunch:
     def __init__(self, **kwds):
         self.__dict__.update(kwds)
@@ -254,7 +277,10 @@ class settings:
 def get_params(config_parser, section):
     params = Bunch()
     for p in config_parser.items(section):
-        setattr(params, p[0], p[1])
+        if len(p[1].split(';'))>1:
+            setattr(params, p[0], p[1].split(';'))
+        else:
+            setattr(params, p[0], p[1])
     return params
 
 def ms2uvfits(ms=None):
@@ -282,6 +308,7 @@ def ms2uvfits(ms=None):
     uvfits = ms.replace(".MS", ".UVF")
     if os.path.exists(uvfits):
         logger.error(uvfits+" exists! Skipping this part....")
+        logger.info("Exiting gracefully.")
         return 
     # TODO: Decided whether to replace logger.info with logger.debug, since this module is
     # wrapped up.
@@ -291,6 +318,7 @@ def ms2uvfits(ms=None):
     # NOTE: Here I'm using masher to call ms2uvfits.
     o = lib.masher(task='ms2uvfits', ms=ms, fitsfile=uvfits, writesyscal='T',
             multisource='T', combinespw='T')
+    logger.info("Appears to have ended successfully.")
 
 def importuvfitsys(uvfits=None, uv=None, tsys=True):
     '''
@@ -313,20 +341,29 @@ def importuvfitsys(uvfits=None, uv=None, tsys=True):
             os.chdir(path2uvfits)
             logger.info("Moved to path "+path2uvfits)
         except:
-            logger.error("Error: Directory or UVFITS file does not exist!")
+            logger.error("Error: Directory does not exist!")
             sys.exit(0)
     #cmd = 'wsrtfits in='+uvf+' op=uvin velocity=optbary out='+uv
+    if uvfits.split('.')[1]=='MS':
+        uvfits = uvfits.split('.')[0]+'.UVF'
+    if not os.path.exists(uvfits):
+        logger.critical(uvfits+" does not exist!")
+        sys.exit(0)
     if os.path.exists(uv):
         logger.warn(uv+' exists! I won\'t clobber. Skipping this part...')
+        logger.info("Exiting gracefully.")
         return
     lib.masher(task='wsrtfits', in_=uvfits, out=uv, op='uvin', velocity='optbary')
 
     # NOTE: Tsys Calibration
     #basher("attsys vis="+uv+" out=temp")
     if tsys is True:
+        if os.path.exists('temp'):
+            lib.basher("rm -r temp")
         lib.masher(task='attsys', vis=uv, out='temp')
         lib.basher('rm -r '+uv)
         lib.basher('mv temp '+uv);
+    logger.info('Appears to have ended successfully...')    
 
 def uvflag(vis=None, select=None):
     '''
@@ -339,7 +376,7 @@ def uvflag(vis=None, select=None):
     vis = os.path.split(vis)[1]
     logger.info("uvflag: Flagging Tool")
     if vis is None or select is None:
-        logger.error("Vis or Flagsnot specified. Check parameters.")
+        logger.error("Vis or Flags not specified. Check parameters.")
         sys.exit(0)
     try:
         os.chdir(path2vis)
@@ -351,6 +388,7 @@ def uvflag(vis=None, select=None):
     for s in select.split(';'):
         o = lib.masher(task='uvflag', vis=vis, select='"'+s+'"', flagval='flag')
         logger.info(o)
+    logger.info("Appears to have ended successfully.")    
 
 def pgflag(vis=None, flagpar='6,2,2,2,5,3', settings=None, stokes='qq'):
     '''
