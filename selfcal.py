@@ -1,393 +1,220 @@
-#!/usr/bin/python
-# Bradley Frank, ASTRON, 2015
-import pylab as pl
-from optparse import OptionParser
-import sys
-import imp
-from apercal import lib
-import threading 
-import time
-import subprocess
 import lib
-import os
 import logging
-logger = logging.getLogger('selfcal')
-#Check if PyBDSM is installed
-try:
-	imp.find_module('lofar')
-	isbdsm = True
-	from lofar import bdsm
-except ImportError:
-	isbdsm = False
+import pylab as pl
+import os
+import sys
 
-class Bunch:
-	'''
-	Dummy container for the parameters.
-	'''
-	def __init__(self, **kwds): 
-		self.__dict__.update(kwds)
+class wcal:
+    '''
+    wcal: WSRT SelfCal
+    Object that does conventional SelfCal using a process that's been well tested for WSRT data.
+    '''
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        self.logger = logging.getLogger('wcal')
+        # Initial Attributes: Constant - Things that you want to change
+        self.path = "./"
+        self.num_major = 5 
+        self.num_minor = 3
+        self.vis = 'vis'
+        self.output = 'output'
+        self.c0 = 3
+        self.dc = 3
+        self.d = 10.
+        self.nsigma = 7 
+        self.immax = 0.0
+        # Setting an advanced setting.
 
-def getimmax(image):
- 	o, e = lib.mirrun(task='imstat', in_=image)
-	immax = float(o.split('\n')[10][51:61])
-	imunits = o.split('\n')[4]
-	return immax, imunits
+        # Initial Attributes: Constant - Things that you DON'T want to change
+        self.image = 'image'
+        self.model = 'model'
+        self.mask = 'mask'
+        self.residual = 'residual'
+        self.map = 'map'
+        self.beam = 'beam'
+        self.rmgains = True # Remove gains from vis file.
 
-def invertr(settings, spars):
-	'''
-	output = invertr(settings, spars)
-	Runs MIRIAD's invert on spars.vis, using settings.get('image'). Returns the output from
-	mirrun.
+        ## MIRIAD Task Interfaces - Things that you SHOULD NOT change.
+        self.invert = invert
+        self.invert.map = self.map
+        self.invert.beam = self.beam
+        self.invert.vis = self.vis 
 
-	'''
-	vis = spars.vis 
-	lpars = settings.get('image')
-	#NOTE: Clean up
-	o, e = lib.shrun('rm -r '+spars.map)
-	o, e = lib.shrun('rm -r '+spars.beam)
-	mirout, mirerr = lib.mirrun(task='invert', vis=vis, select=lpars.select,
-			line=lpars.line, map = spars.map, beam=spars.beam, options=lpars.options,
-			slop=lpars.slop, stokes=lpars.stokes, imsize=lpars.imsize, cell=lpars.cell,
-			fwhm=lpars.fwhm, robust=lpars.robust)
-	lib.exceptioner(mirout, mirerr)
-	return mirout
-		
-def clean(lpars):
-	'''
-	output = clean(lpars)
-	Runs MIRIAD's clean, using standard settings.
-	'''
-	#NOTE: Cleanup
-	o, e = lib.shrun("rm -r "+lpars.model)
-	if lpars.mask!=None:
-		#NOTE: Use mask if provided. 
-		mirout, mirerr = lib.mirrun(task='clean', map=lpars.map, beam=lpars.beam,
-				out=lpars.model, cutoff=lpars.cutoff,
-				region="'mask("+lpars.mask+")'", niters=100000)
-		lib.exceptioner(mirout, mirerr)
-	else:
-		#NOTE: Do a 'light' clean if no mask provided.
-		mirout, mirerr = lib.mirrun(task='clean', map=lpars.map, beam=lpars.beam,
-				out=lpars.model, cutoff=lpars.cutoff, niters=1000)
-		lib.exceptioner(mirout, mirerr)
-	return mirout
+        ## Advanced Attributes - More things that you SHOULD NOT change
+        self.clean = clean
+        self.clean.out = self.model
+        self.clean.beam =  self.beam
+        self.clean.map =  self.map
+        self.clean.region = 'mask('+self.mask+')'
 
-def restor(lpars, mode='clean'):	
-	'''
-	output = restor(params, mode='clean')
-	Uses the MIRIAD task restor to restor a model image, creating either an image or a
-	residual.
-	'''
-	if mode.upper()!="CLEAN":
-		# Make the residual
-		# Cleanup
-		o, e = lib.shrun('rm -r '+lpars.residual)
-		mirout, mirerr = lib.mirrun(task='restor', beam=lpars.beam, map=lpars.map,
-				model=lpars.model, out=lpars.residual, mode='residual')
-	else:
-		# Make the image
-		# Cleanup
-		o, e = lib.shrun('rm -r '+lpars.image)
-		mirout, mirerr = lib.mirrun(task='restor', beam=lpars.beam, map=lpars.map,
-				model=lpars.model, out=lpars.image, mode=mode)
+        self.obsrms = obsrms
 
-	return mirout	
-	
-def make_mask(image, cutoff, mask):
-	'''
-	output = make_mask(image, cutoff, mask)
-	Uses the MIRIAD task MATHS to make a threshold mask. The input <image> is thresholded with
-	cutoff, and a <mask> is created.
-	'''
-	# Cleanup
-	o, e = lib.shrun('rm -r '+mask)
-	# NOTE: MATHS is stupid and doesn't know how to follow paths. So we have to make a symbolic
-	# link to the images.
-	lib.shrun('ln -s '+image) 	
-	mirout, mirerr = lib.mirrun(task='maths', exp=os.path.split(image)[1],
-			mask=os.path.split(image)[1]+".gt."+str(cutoff),
-			out=mask)
-	lib.exceptioner(mirout, mirerr)
-	# Remove the symbolic link
-	lib.shrun('rm '+os.path.split(image)[-1]) 	
+        self.selfcal = selfcal
+        self.selfcal.model = self.model
 
-	# Climb up back to the original path
+        self.maths = maths
+        self.maths.out = self.mask
 
-	return mirout
+        self.restor = restor
+        self.restor.out = self.image
+        self.restor.model = self.model
+        self.restor.map = self.map
+        self.restor.beam = self.beam
+        self.restor.mode = 'clean'
 
-def selfcal(vis, settings):
-	'''
-	output = selfcal(lpars)
-	Uses the MIRIAD task selfcal to do... well... selfcal. 
-	'''
-	lpars = settings.get('selfcal')
-	mirout, mirerr = lib.mirrun(task='selfcal', vis=vis, select=lpars.select,
-				model=lpars.model, options=lpars.options, interval=lpars.interval,
-				line=lpars.line, clip=lpars.clip)
-	return mirout		
+        self.imstat = imstat
+        self.imstat.in_ = self.map
 
-def wgains(lpars):
-	'''
-	Write the gains into a new file.
-	'''
-	mirout, mirerr = lib.mirrun(task='uvcat', vis=lpars.vis, out='.temp') 
-	#tout = uvcat.snarf()
-	o, e = lib.shrun('rm -r '+lpars.vis)
-	o, e = lib.shrun('mv .temp '+lpars.vis)
+    def __getitem__(self, key):
+        return getattr(self, key)
 
-def get_cutoff(lpars, cutoff=1e-3):
-	'''
-	This uses OBSRMS to calculate the theoretical RMS in the image.
-	'''
-	#lpars = settings.get('obsrms')
+    def help(self):
+        logger.info("Print some help!")
 
-	mirout, mirerr = lib.mirrun(task='obsrms', tsys=lpars.tsys, jyperk=lpars.jperk,
-			freq=lpars.freq, theta=lpars.theta, nants=lpars.nants, bw=lpars.bw,
-			inttime=lpars.inttime, antdiam=lpars.antdiam)
+    def setup(self):
+        '''
+        setup moves to the output directory specified, makes a symbolic link to the visibility file
+        that you're working on.
+        '''
+        # Initial Attributes: Constant - Things that you DON'T want to change
+        # First, check that the path exists, and complain if it doesn't.
 
-	rms = mirout.split('\n')[3].split(";")[0].split(":")[1].split(" ")[-2]
-	noise = float(lpars.nsigma)*float(rms)/1000.	
-	# NOTE: Breakpoints to check your noise. 
-	if cutoff > noise:
-		# NOTE: More Breakpoints. 
-		#print "cutoff > noise"
-		return cutoff
-	else:
-		# NOTE: More Breakpoints. 
-		#print "cutoff < noise"
-		return noise
+        if not os.path.exists(self.path):
+            self.logger.critical("Path not found. Please fix and start again.")
+            sys.exit(0)
+        
+        # Now make the output path
+        try:
+            os.chdir(self.path+'/'+self.output)
+        except:
+            self.logger.warn("Cannot find "+self.path+'/'+self.output+", making it ")
+            os.mkdir(self.path+'/'+self.output)
+            os.chdir(self.path+'/'+self.output)
+            
+        self.logger.warn('You have now moved into '+self.path+'/'+self.output)
+        self.logger.warn('All outputs will be relative to this path.')
 
-def image_cycle(settings, params, j=1):
-	c1 = pl.linspace(float(params.c0), float(params.c0)+2.*float(params.dc), 3)*(j)
-	c2 = c1*10.
-	invout = invertr(settings, params)
-	immax, imunits = getimmax(params.map)
-	make_mask(params.map, immax/c1[0], params.mask)
-	params.cutoff = get_cutoff(settings.get('obsrms'), cutoff=immax/c2[0])
-	clean(params)
-	restor(params)
-	immax, imunits = getimmax(params.image)
-	make_mask(params.image, immax/c1[1], params.mask)
-	params.cutoff = get_cutoff(settings.get('obsrms'), cutoff=immax/c2[1])	
-	clean(params)
-	restor(params)
-	immax, imunits = getimmax(params.image)
-	make_mask(params.image, immax/c1[2], params.mask)
-	params.cutoff = get_cutoff(settings.get('obsrms'), cutoff=immax/c2[2])
-	clean(params)
-	restor(params)
-	cmmax, cmunits = getimmax(params.model)
-	params.clip = cmmax/(100.*j)
-	restor(params, mode='residual')
+        # Now, where is the visibility file relative to present working directory? 
+        #self.vis = os.path.relpath(self.vis, os.getcwd())
+        self.logger.info("Making symbolic/soft link to your visibility file")
+        lib.basher("ln -s "+self.path+'/'+self.vis)
+        self.selfcal.vis = self.vis
+        self.invert.vis = self.vis
+        # Advanced Attributes
+        # This is an extra level of protection against not having enough cutoffs.
+        self.mask_cutoffs = pl.linspace(float(self.c0), float(self.c0)+2.*float(self.dc), self.num_minor)
+        self.clean_cutoffs = self.mask_cutoffs*self.d
+        self.path0 = os.getcwd()
+        self.trms = self.nsigma*float(self.obsrms.go()[-1].split()[3])/1000. # OBSRMS will return values in mJy/beam
 
+    def go(self):
+        '''
+        Runs the selfcal loop niters times
+        '''
+        logger = self.logger
+        logger.info('Starting SelfCal')
+        self.setup()
+        if len(self.mask_cutoffs)<self.num_minor or len(self.clean_cutoffs)<self.num_minor:
+            logger.critical("Insufficient mask and clean cutoffs provided!")
+            logger.critical("Number of cutoffs = num_minor")
+            logger.critical("Please adjust and try again.")
+            sys.exit(0)
+        if self.rmgains:
+            lib.basher('rm -r '+self.vis+'/gains')
+            logger.info("Removing previous gains.")
+        logger.info("Doing selfcal with "+str(self.num_major)+" major cycles.")
 
-def bdsm(lpar):
-	'''
-	This runs PyBDSM on the image to make a mask from the Gaussian output from the source
-	finder. 
-	'''
-	# Export the Image as Fits
-	mirout, mirerr = lib.mirrun(task='fits', in_=lpars.image, op='xyout',
-		out=lpars.image+'.fits') 
+        self.deep_image()
+        for i in range(0,int(self.num_major)):
+            logger.info("Major Cycle = "+str(i+1))
+            self.selfcal.go()
+            self.deep_image()
+            self.mask_cutoffs = self.mask_cutoffs*(i+2)
+            self.clean_cutoffs = self.mask_cutoffs*self.d
+        logger.info('SelfCal Completed.')    
+      
+        
+    def deep_image(self):
+        '''
+        Module to do deep imaging. The names of the output are derived from self. 
+        So if the user wants to do a one-off invert or clean, then they do it with their own names
+        and at their own risk.
+        '''
+        logger = logging.getLogger('deep_image')
+        logger.info("Mask threshold: IMAX"+str(self.mask_cutoffs[0]))
+        self.invert.go(rmfiles=True)
+        self.imstat.in_ = self.invert.map
+        immax = float(self.imstat.go()[-1].split()[3])
+        self.maths.mask = self.invert.map+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[0], self.trms))
+        self.maths.go(rmfiles=True)
+        for j in range(0,int(self.num_minor)):
+            logger.info('/minor-cycle = '+str(j))
+            if j>0:
+                self.imstat.in_ = self.image
+                self.immax = float(self.imstat.go()[-1].split()[3])
+                self.maths.mask = self.image+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[j], self.trms))
+                self.maths.go(rmfiles=True)
+            self.clean.cutoff = "{:2.2}".format(max(immax/self.clean_cutoffs[j], self.trms))
+            self.clean.go(rmfiles=True)
+            self.restor.mode = 'clean'
+            self.restor.out = self.image 
+            self.restor.go(rmfiles=True)
+            self.restor.mode = 'residual'
+            self.restor.out = self.residual
+            self.restor.go(rmfiles=True)
+ 
+# General initialization of MIRIAD interfaces. This will get passed to the class as attributes
+# MIRIAD tasks used in this are:
+# invert, selfcal, clean, obsrms, maths, restor, imstat 
+ 
+# INVERT Default Parameters
+invert = lib.miriad('invert')
+invert.keywords()
+invert.vis = 'vis'
+invert.robust = '-2'
+invert.slop= '0.5'
+invert.imsize='1500'
+invert.cell = 4
+invert.options='mfs,double'
 
-	# Run PyBDSM on the Image
-	img = bdsm.process_image(params.image+'.fits')
-	img.export_image(outfile = params.image+'gaus_model.fits', im_type='gaus_model')
-	img.write_catalog(outfile = params.image+'gaus_model.txt')
-	
-	# Use the Gaussian Image File as a Model
-	mirout, mirerr = lib.mirrun(task='fits', in_=params.image+'gaus_model.fits', op='xyin',
-			out=lpars.lsm)
-	lpars.model = lpars.lsm
-	tout = selfcal(lpars)
+# OBRMS for Calculating Theoretical Noise
+obsrms = lib.miriad('obsrms')
+obsrms.tsys = 50
+obsrms.jyperk = 150
+obsrms.antdiam = 25
+obsrms.freq = 1.4
+obsrms.theta = 15
+obsrms.nants = 11
+obsrms.bw = 20
+obsrms.inttime = 12.*60.
+obsrms.coreta = 0.88
 
-def make_nvss_lsm(params):
-	#TODO: NVSS needs to be integrated here!!!!
-	c = "python mk-nvss-lsm.py -i "+params.map+" -o "+params.lsm
-	o, e = lib.shrun(c)
-	tout = selfcal(params) 
-	#print 'Selfcal Output Using LSM:'
-	#print ("\n".join(map(str, tout[0])))
+# SELFCAL
+selfcal = lib.miriad('selfcal')
+selfcal.select = '-uvrange(0,0.5)'
+selfcal.options = 'mfs,phase'
+selfcal.refant = '2'
+selfcal.interval = 2
+selfcal.clip = 1e-6
+selfcal.model = 'model'
 
+# CLEAN
+clean = lib.miriad('clean')
+clean.map = 'map'
+clean.beam = 'beam'
+clean.out = 'model'
+clean.cutoff = 5e-4
+clean.niters=100000
+clean.go()
 
-#global params
-	
-def iteri(lpars, i, tag=''):
-	lpars.map = lpars.output_path+lpars.vis+'_'+tag+'_map'+str(i)
-	lpars.beam = lpars.output_path+lpars.vis+'_'+tag+'_beam'+str(i)
-	lpars.mask = lpars.output_path+lpars.vis+'_'+tag+'_mask'+str(i)
-	lpars.model = lpars.output_path+lpars.vis+'_'+tag+'_model'+str(i)
-	lpars.image = lpars.output_path+lpars.vis+'_'+tag+'_image'+str(i)
-	lpars.lsm = lpars.output_path+lpars.vis+'_'+tag+'_lsm'+str(i)
-	lpars.residual = lpars.output_path+lpars.vis+'_'+tag+'_residual'+str(i)
+# MATHS
+maths = lib.miriad('maths')
+maths.exp = 'map'
+maths.mask = 'map.gt.1e-3'
+maths.out = 'mask'
 
-def mkim0(settings, lpars):
-	'''
-	Makes the 0th image.
-	'''
-	invout = invertr(settings, lpars)
-	immax, imunits = getimmax(lpars.map)
-	make_mask(lpars.map, immax/float(lpars.c0), lpars.mask)
-	lpars.cutoff = get_cutoff(settings.get('obsrms'), cutoff=immax/float(lpars.c0))
-	clean(lpars)
-	restor(lpars)
+# RESTOR
+restor = lib.miriad('restor')
 
-
-class selfcal_main(threading.Thread):
-	def __init__(self, vis, settings):
-		threading.Thread.__init__(self)
-		# NOTE: Now params is just the mpars defined below, which is a unit of spars. I use
-		# the name params to disambiguate it from mpars.
-		self.vis = vis
-		# NOTE: settings is attached to the config file and contains all the generic
-		# information.
-		self.settings = settings
-
-	def run(self):
-		'''
-		This is the selfcal engine that gets farmed out to multiple threads. 
-		'''
-		# TODO: Need to make a new directory for the outputs  
-		settings = self.settings
-		params = settings.get('selfcal_multi')
-		params.vis = self.vis
-		print "SelfCal on "+params.vis+' in this thread'
-
-		# NOTE: Setup Output Directory and move to the directory that contains all the
-		# visibilities.
-		output_path = settings.full_path(params.pointing+'/'+params.vis+"_sc")
-		lib.mkdir(output_path)
-		params.output_path = params.vis+"_sc/" 
-		working_path = settings.full_path(params.pointing+'/')
-		os.chdir(working_path)
-		# Now - we will dump the results in whatever path we're in.
-
-		if lib.str2bool(params.mkim0)!=False:
-			iteri(params, i=0)
-			image_cycle(settings, params)
-			sys.exit(0) # Perhaps this is the most appropriate?
-		else:
-			#NOTE: This seemingly defunct piece of code is necessary for vizquery to have a
-			#reference.
-			iteri(params, i=0)
-			mkim0(settings, params)
-		
-		# Use PyBDSM. Deprecated. DO NOT USE!
-		if lib.str2bool(params.bdsm)!=False:
-			params.lsm = params.vis+'_bdsm'
-			print 'Using PyBDSM to make LSM'
-			bdsm(params)
-		
-		#NOTE: Use the NVSS as the LSM. Not always successful. 
-		if lib.str2bool(params.nvss)!=False:
-			params.lsm = params.vis+'_lsm'
-			params.model = params.lsm
-			print 'Making LSM'
-			lsm(params)
-		
-		# NOTE: Not needed?
-		#R = [] #NOTE: Ratio of actual to theoretical noise
-		
-		
-		# NOTE: Figure out how many loops to run, command line parameters **always** trump file
-		# parameters.
-		nloops = int(params.nloops)
-		
-		if nloops!=0:
-			for i in range(0, nloops):
-				#NOTE: iteri is the function that generates all the relevant names. 
-				iteri(params, i+1)
-				image_cycle(settings, params, j=i+1)
-				selfcal_out = selfcal(params.vis, settings) 
-		
-			#NOTE: Make the final image after selfcal, using the mask and cutoffs from the last run.
-			iteri(params, i='', tag='final')
-			image_cycle(settings, params, j=i+1)
-
-def selfcal_multi(settings):
-	'''
-	Main module that controls the multi-threaded selfcal. 
-
-	selfcal_main(settings), where settings is grabbed from a config file through:
-	settings = apercal.lib.settings('someconfigfile.txt')
-	'''
-	logger  = logging.getLogger('selfcal_multi')
-	logger.setLevel(logging.DEBUG)
-	# NOTE: The script parameters, spars, are grabbed here and used throughout the script.
-	spars = settings.get('selfcal_multi')
-	nt = 0
-	if lib.str2bool(spars.imall)!=False:
-		print "Making Wide Band Image..."
-		spars.line=""
-		#NOTE: Increase the CLEAN depth by the nominal increase in sensitivity.
-		spars.dc = float(spars.dc) * pl.sqrt(8.)
-		#NOTE: Increase the BW
-		spars.bw = float(spars.bw) * 8.
-		for i in range(0,int(spars.nloops)):
-			print "Loop=", str(i)
-			iteri(spars, i=i+1)
-			image_cycle(settings, spars, j=i+1)
-		print "Completed Wide Band Image"
-		sys.exit(0)
-
-	spars.nloops = int(spars.nloops)
-	THREADS = []
-	
-	for v in spars.vis.split(','):
-		# NOTE: Here we make the new directory and move to it. 
-		if lib.str2bool(spars.cleanup)!=False:
-			o, e = lib.shrun("rm -r "+v+"/gains")
-			o, e = lib.shrun("rm -r "+v+"_*")
-		logger.info("Assigned Thread "+str(nt)+" for "+v)
-		nt+=1
-		# NOTE: Now mpars only exists in this for loop, and is reserved for the
-		# farming of the threads. It is a copy of spars 
-		#mpars = spars
-		#mpars.vis = v 
-		#mpars.tag = v
-		THREADS.append(selfcal_main(v, settings))
-		time.sleep(1)
-	for T in THREADS:
-		logger.info("Starting "+str(T))
-		T.start()
-	
-	for T in THREADS:
-		time.sleep(1)
-		logger.info("Joining "+ str(T))
-		T.join()
-
-	logger.info("DONE.")
-
-if __name__=="__main__":
-	'''
-	Command Line Usage
-	'''
-	usage = "usage: %prog options"
-	parser = OptionParser(usage=usage);
-	
-	parser.add_option("--vis", "-v", type = 'string', dest = 'vis', default=None, 
-		help = "Vis to be selfcal'd [None]");
-	parser.add_option("--config", "-c", type = 'string', dest='config', default=None, 
-		help = 'Config file to be used [None]')
-	parser.add_option('--lsm', '-l', action='store_true', dest='lsm', default=False,
-		help = "Use LSM for calibration [False]")
-	parser.add_option('--nloops', '-n', type='int', dest='nloops', default=0, 
-		help = 'Number of Selfcal Loops [0]')
-	parser.add_option('--bdsm', '-b', action='store_true', dest='bdsm', default=False, 
-		help = 'Use PyBDSM to create Gaussian LSM0 [False]')
-	parser.add_option('--mkim0', '-m', action='store_true', dest='mkim0', default=False, 
-		help = 'MFS-Image the VIS and exit [False].')
-	parser.add_option('--par', '-p', type='string', dest='par', default=None, 
-		help = 'Overwrite a single parameter: --par <par>:<value>;<par2>:<value2>')
-	parser.add_option("--cleanup", action='store_true', dest='cleanup', default=False,
-		help = 'Remove old gains and start from scratch [False]')
-	parser.add_option("--imall", action='store_true', dest='imall', default=False,
-		help = "Make a wide-band image with all visibilities and exit [False]")
-	(options, args) = parser.parse_args()	
-	
-	if len(sys.argv)==1: 
-		parser.print_help()
-		dummy = sys.exit(0)
-	else:
-		params = lib.settings(options.config)
-		selfcal_multi(params)
+# IMSTAT
+imstat = lib.miriad('imstat')

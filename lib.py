@@ -31,7 +31,7 @@ def write2file(header, text2write, file2write):
     f.writelines('\n---- \n')
     f.close()
 
-def setup_logger(level='info', logfile=None):
+def setup_logger(level='info', logfile=None, quiet=False):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     logger.propagate = False 
@@ -45,16 +45,17 @@ def setup_logger(level='info', logfile=None):
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fh_formatter)
     logger.addHandler(fh)
-    
-    ch_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-    ch = logging.StreamHandler()
-    if level=='info':
-        ch.setLevel(logging.INFO)
-    if level=='debug':    
-        ch.setLevel(logging.DEBUG)
-    ch.setFormatter(ch_formatter)
-    logger.addHandler(ch)
-    logger.info("Logging started!")
+
+    if not quiet:
+        ch_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        ch = logging.StreamHandler()
+        if level=='info':
+            ch.setLevel(logging.INFO)
+        if level=='debug':    
+            ch.setLevel(logging.DEBUG)
+        ch.setFormatter(ch_formatter)
+        logger.addHandler(ch)
+    logger.info('Logging started!')
     return logger
 
 
@@ -144,7 +145,7 @@ def basher(cmd, showasinfo=False):
             logger.info("\n"+out)
         else:
             logger.debug("Command = "+cmd)
-            logger.info("\n"+out)
+            logger.debug("\n"+out)
     if len(err)>0:
         logger.error(err)
     # NOTE: Returns the STD output.
@@ -171,6 +172,41 @@ def get_source_names(vis=None):
     else:
         logger.critical("get_source_names needs a vis!")
         sys.exit(0)
+	
+class maths:
+    '''
+    Special MIRIAD type class for the stupid task MATHS, which does not know how to refer to
+    directories.
+    '''
+    def __init__(self,**kwargs):
+        self.__dict__.update(kwargs)
+        self.task = 'maths'
+	self.exp = ''
+	self.mask = 'mask'
+	self.out = ''
+    def __getitem__(self, key):
+        return getattr(self, key)
+    def keywords(self):
+        lib.masher(task=self.task+" -kw")
+    def help(self):
+        lib.masher(task=self.task+" -k")
+    def go(self):
+        logger = logging.getLogger(self.task)
+	paths = os.path.split(self.exp)
+	path0 = os.getcwd()
+	if paths[0]!='':
+		os.chdir(paths[0])
+		self.exp = paths[1]	
+		self.mask = self.mask.replace(paths[0]+'/', '')
+        output = lib.masher(**self.__dict__)
+	return output
+	# Return to old path
+	if paths[0]!='':
+		os.chdir(path0)
+		# Return the exp and image parameters
+		self.exp = paths[0]+'/'+self.exp
+		self.mask = paths[0]+'/'+self.image
+        logger.info('Completed.')
 
 class miriad:
     def __init__(self, task, **kwargs):
@@ -182,10 +218,29 @@ class miriad:
         lib.masher(task=self.task+" -kw")
     def help(self):
         lib.masher(task=self.task+" -k")
-    def go(self):
+    def rmfiles(self):
+        logger = logging.getLogger('miriad '+self.task)
+        logger.debug("Cleanup - files will be DELETED.")
+        if self.task=='invert':
+            if os.path.exists(self.map):
+                lib.basher("rm -r "+self.map)
+            if os.path.exists(self.beam):
+                lib.basher("rm -r "+self.beam)
+        elif self.task=='clean':
+            if os.path.exists(self.out):
+                lib.basher('rm -r '+self.out)
+        elif self.task=='restor':
+                lib.basher('rm -r '+self.out)
+        elif self.task=='maths':
+                if os.path.exists(self.out):
+                    lib.basher('rm -r '+self.out)
+    def go(self, rmfiles=False):
+        logger = logging.getLogger('miriad '+self.task)
+        if rmfiles:
+            self.rmfiles()
         output = lib.masher(**self.__dict__)
-        logger = logging.getLogger(self.task)
         logger.info('Completed.')
+       	return output
         
 class Bunch:
     def __init__(self, **kwds):
