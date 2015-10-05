@@ -24,18 +24,22 @@ class source:
             self.uvf = str(self.ms).upper().replace('.MS', 'UVF')
         else:
             self.uvf = uvf
-        if uv is None and ms is not None:
+        if vis is None and ms is not None:
             self.vis = str(self.ms).upper().replace('.MS', 'UV')
-        else
+        else:
             self.vis = vis
         if path is '':
             self.path = pathtodata
         else:    
             self.path = path
+        if output is None:
+            self.output = 'output'
+        else:    
+            self.output = output    
 
 ####################################################################################################
 
-class selfcal:
+class wselfcal:
     '''
     selfcal: WSRT SelfCal
     Object that does conventional SelfCal using a process that's been well tested for WSRT data.
@@ -45,16 +49,16 @@ class selfcal:
         self.logger = logging.getLogger('selfcal')
         # Initial Attributes: Constant - Things that you want to change
 
-        self.source = source
+        self.source = source()
         self.path = self.source.path
         self.output = self.source.output
         self.vis = self.source.vis
 
         self.num_major = 5 
         self.num_minor = 3
-        self.output = 'output'
-        self.c0 = 3
-        self.dc = 3
+        self.linear = True # Can be linear or log. If log, then the entries are exponents.
+        self.cmin = 3
+        self.cmax = 2
         self.d = 10.
         self.nsigma = 7 
         self.immax = 0.0
@@ -113,6 +117,10 @@ class selfcal:
         '''
         # Initial Attributes: Constant - Things that you DON'T want to change
         # First, check that the path exists, and complain if it doesn't.
+        # If a source has been provided but the path has not been set.
+        self.path = self.source.path
+        self.output = self.source.output
+        self.vis = self.source.vis
 
         if not os.path.exists(self.path):
             self.logger.critical("Path not found. Please fix and start again.")
@@ -135,7 +143,10 @@ class selfcal:
         self.invert.vis = self.vis
         # Advanced Attributes
         # This is an extra level of protection against not having enough cutoffs.
-        self.mask_cutoffs = pl.linspace(float(self.c0), float(self.c0)+2.*float(self.dc), self.num_minor)
+        if self.linear:
+            self.mask_cutoffs = pl.linspace(float(self.cmin), float(self.cmax), self.num_minor)
+        else:
+            self.mask_cutoffs = pl.logspace(float(pl.log10(self.cmin)), float(pl.log10(self.cmax)), self.num_minor)
         self.clean_cutoffs = self.mask_cutoffs*self.d
         self.path0 = os.getcwd()
         self.trms = self.nsigma*float(self.obsrms.go()[-1].split()[3])/1000. # OBSRMS will return values in mJy/beam
@@ -180,7 +191,7 @@ class selfcal:
         self.maths.mask = self.invert.map+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[0], self.trms))
         self.maths.go(rmfiles=True)
         for j in range(0,int(self.num_minor)):
-            logger.info('/minor-cycle = '+str(j))
+            logger.info('Starting /minor-cycle = '+str(1+j))
             if j>0:
                 self.imstat.in_ = self.image
                 self.immax = float(self.imstat.go()[-1].split()[3])
@@ -194,6 +205,7 @@ class selfcal:
             self.restor.mode = 'residual'
             self.restor.out = self.residual
             self.restor.go(rmfiles=True)
+            logger.info('Completed /minor-cycle = '+str(1+j))
 
 ####################################################################################################
 
@@ -249,7 +261,7 @@ class crosscal:
                         self.uvflag.go()
                 else:
                     self.go()
-         else:
+        else:
                 sourc = self.source
                 try:
                     os.chdir(sourc.path)
@@ -263,7 +275,7 @@ class crosscal:
                         self.uvflag.go()
                 else:
                     self.go()
-         os.chdir(path0)       
+        os.chdir(path0)       
 
     def pgflagger(self):
         '''
@@ -289,7 +301,7 @@ class crosscal:
             self.pgflag.vis = sourc.vis
             self.pgflag.go()
 
-    def ms2uvfits(self.source):
+    def ms2uvfits(self):
         '''
         wrapper around ms2uvfits
         '''
@@ -411,11 +423,10 @@ attsys = lib.miriad('attsys')
  
 # INVERT Default Parameters
 invert = lib.miriad('invert')
-invert.keywords()
 invert.vis = 'vis'
 invert.robust = '-2'
-invert.slop= '0.5'
-invert.imsize='1500'
+invert.slop = '0.5'
+invert.imsize ='1500'
 invert.cell = 4
 invert.options='mfs,double'
 invert.select = 'NONE'
@@ -448,7 +459,6 @@ clean.beam = 'beam'
 clean.out = 'model'
 clean.cutoff = 5e-4
 clean.niters=100000
-clean.go()
 
 # MATHS
 maths = lib.miriad('maths')
