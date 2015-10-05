@@ -36,6 +36,12 @@ class source:
             self.output = 'output'
         else:    
             self.output = output    
+    
+    def update(self):
+        if self.path is '' and self.pathtodata is not '':
+            self.path = self.pathtodata
+        if self.path is not '' and self.pathtodata is '':
+            self.pathtodata = self.path
 
 ####################################################################################################
 
@@ -118,9 +124,7 @@ class wselfcal:
         # Initial Attributes: Constant - Things that you DON'T want to change
         # First, check that the path exists, and complain if it doesn't.
         # If a source has been provided but the path has not been set.
-        self.path = self.source.path
-        self.output = self.source.output
-        self.vis = self.source.vis
+
 
         if not os.path.exists(self.path):
             self.logger.critical("Path not found. Please fix and start again.")
@@ -211,13 +215,17 @@ class wselfcal:
 
 class crosscal:
     def __init__(self, **kwargs):
+        self.logger = logging.getLogger('crosscal')
         self.__dict__.update(kwargs)
+
+        # Place MIRIAD interfaces here
         self.wsrtfits = wsrtfits 
         self.attsys = attsys
         self.uvflag = uvflag
         self.pgflag = pgflag
         self.mfcal = mfcal
         self.puthd = puthd
+        self.uvcal = uvcal
         # source can be a source object, or a list of source objects
         self.source = source
 
@@ -228,6 +236,17 @@ class crosscal:
         '''
         '''
         # Now make the output path
+        if type(self.source) is list:
+            logger.info('Setting path to first source')
+            sourc = self.source[0]
+            self.path = sourc.path
+            self.output = sourc.output
+            self.vis = sourc.vis
+        else:
+            self.path = self.source.path
+            self.output = self.source.output
+            self.vis = self.source.vis
+
         try:
             os.chdir(self.path)
         except:
@@ -306,6 +325,9 @@ class crosscal:
         wrapper around ms2uvfits
         '''
         path0 = os.getcwd()
+        if self.source.ms is None:
+            self.logger.critical("MS not provided. Please check source.")
+            sys.exit(0)
         try:
             os.chdir(self.source.pathtodata)
         except:
@@ -315,7 +337,33 @@ class crosscal:
             sys.exit(0)
         lib.ms2uvfits(ms=self.source.ms, uvf=self.source.uvf)
         os.chdir(path0)    
-         
+        
+    def importloop(self, sourc):
+        '''
+        '''
+        if sourc.ms is not None:
+            if os.path.exists(sourc.pathtodata+'/'+sourc.uvf):
+                self.logger.error(sourc.uvf+" found, not overwriting.")
+            else:    
+                ms2uvfits(sourc.ms)
+        else:
+            self.logger.warn('No MS provided. I\'m assuming that it\'s already been generated.')
+        # Change path to where the output should be.
+        try: 
+            os.chdir(sourc.path)
+        except:
+            self.logger.error(sourc.path+' does not exist, making it...')
+            lib.basher("mkdir "+sourc.path)
+            os.chdir(sourc.path)
+        if os.path.exists(sourc.path+'/'+sourc.vis):
+            self.logger.error(sourc.vis+' found, not overwriting.')
+        else:
+            self.wsrtfits.in_ = sourc.uvf
+            self.wsrtfits.out = os.path.relpath(sourc.pathtodata, sourc.path)+'/'+sourc.vis
+            self.wsrtfits.go()
+        self.do_tsys(sourc.vis)
+        self.fixhead(sourc.vis)
+
     def importdata(self): 
         '''
         A wrapper to perform multiple import operations.
@@ -324,30 +372,16 @@ class crosscal:
         visiblity files. 
         '''
         path0 = os.getcwd()
-        for sourc in self.source:
-            # First, go to the MS file and convert it.
-            if os.path.exists(source.pathtodata+'/'+sourc.uvf):
-                logger.error(sourc.uvf+" found, not overwriting.")
-            else:    
-                ms2uvfits(sourc.ms)
-            # Change path to where the output should be.
-            try: 
-                os.chdir(sourc.path)
-            except:
-                logger.error(sourc.path+' does not exist, making it...')
-                lib.basher("mkdir "+sourc.path)
-                os.chdir(sourc.path)
-            if os.path.exists(source.path+'/'+sourc.uv):
-                logger.error(sourc.uv+' found, not overwriting.')
-            else:
-                wsrtfits.in_ = sourc.uvf
-                wsrtfits.out = os.relpath(pathtodata, path)+'/'+sourc.uv
-                wsrtfits.go()
-            do_tsys(sourc.uv)
-            fixhead(sourc.uv)
+        if type(self.source) is list:
+            for sourc in self.source:
+                # First, go to the MS file and convert it.
+                self.importloop(sourc)
+        else:
+            sourc = self.source
+            self.importloop(sourc) 
         os.chdir(path0)
 
-    def fixhead(vis):
+    def fixhead(self, vis):
         '''
         Inserts important header information to a visibility data set. 
         '''
@@ -360,7 +394,7 @@ class crosscal:
         puthd.value= '1.0'
         puthd.go()
 
-    def do_tsys(vis):
+    def do_tsys(self, vis):
         '''
         Does Tsys correction in input vis using the MIRIAD task ATTSYS. 
         '''
@@ -411,6 +445,11 @@ uvlin.chans = '10,200,250,400,650,900'
 uvlin.order = 5
 uvlin.mode = 'chan0'
 uvlin.out = 'src.uv_chan0'
+
+uvcal = lib.miriad('uvcal')
+uvcal.options = 'hanning'
+uvcal.select=None
+uvcal.out = 'hanning.uv'
 
 puthd = lib.miriad('puthd')
 

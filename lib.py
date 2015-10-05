@@ -229,6 +229,9 @@ class maths:
 
 class miriad:
     def __init__(self, task, **kwargs):
+        '''
+        DO NOT DEFINE ANY OTHER VARIABLES HERE
+        '''
         self.__dict__.update(kwargs)
         self.task = task
     def __getitem__(self, key):
@@ -253,6 +256,11 @@ class miriad:
         elif self.task=='maths':
                 if os.path.exists(self.out):
                     lib.basher('rm -r '+self.out)
+    def inp(self):
+        logger = logging.getLogger('miriad '+self.task)
+        attrs = vars(self)
+        logger.info(', '.join("%s=%s" % item for item in attrs.items() if item[0] is not 'logger'))
+
     def go(self, rmfiles=False):
         logger = logging.getLogger('miriad '+self.task)
         if rmfiles:
