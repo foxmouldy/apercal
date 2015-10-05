@@ -4,7 +4,7 @@ import pylab as pl
 import os
 import sys
 
-class wcal:
+class wsrtcal:
     '''
     wcal: WSRT SelfCal
     Object that does conventional SelfCal using a process that's been well tested for WSRT data.

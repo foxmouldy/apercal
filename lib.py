@@ -18,7 +18,26 @@ deg2rad = pl.pi/180.
 import lib
 reload(logging)
 
+class source:
+    def __init__(self, pathtodata=None, ms=None, uvf=None, uv=None, path=None):
+        self.pathtodata = pathtodata
+        self.ms = ms
+        if uvf is None:
+            self.uvf = self.ms.upper.replace('.MS', 'UVF')
+        else:
+            self.uvf = uvf
+        self.uv = uv
+        if self.path is None:
+            self.path = pathtodata
+        else:    
+            self.path = path
+    def make_source(self):
+            self.ms = (self.pathtodata+'/'+self.ms).replace('//','/')
+            self.uvf = (self.pathtodata+'/'+self.uvf).replace('//','/')
+            self.uv = (self.path+'/'+self.uv).replace('//', '/')
+   
 
+     
 def write2file(header, text2write, file2write):
     '''
     write2file writes the output of some task to a textfile.
@@ -338,7 +357,7 @@ def get_params(config_parser, section):
             setattr(params, p[0], p[1])
     return params
 
-def ms2uvfits(ms=None):
+def ms2uvfits(ms=None, uvf=None):
     '''
     ms2uvfits(ms=None)
     Utility to convert ms to a uvfits file
@@ -360,7 +379,8 @@ def ms2uvfits(ms=None):
             sys.exit(0)
     
     # Start the processing by setting up an output name and reporting the status.
-    uvfits = ms.replace(".MS", ".UVF")
+    if uvf is None:
+        uvfits = ms.replace(".MS", ".UVF")
     if os.path.exists(uvfits):
         logger.error(uvfits+" exists! Skipping this part....")
         logger.info("Exiting gracefully.")
