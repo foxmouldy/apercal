@@ -125,6 +125,8 @@ class wselfcal:
         # First, check that the path exists, and complain if it doesn't.
         # If a source has been provided but the path has not been set.
 
+        self.path = self.source.path
+        self.vis = self.source.vis    
 
         if not os.path.exists(self.path):
             self.logger.critical("Path not found. Please fix and start again.")
@@ -211,6 +213,9 @@ class wselfcal:
             self.restor.go(rmfiles=True)
             logger.info('Completed /minor-cycle = '+str(1+j))
 
+
+
+
 ####################################################################################################
 
 class crosscal:
@@ -226,6 +231,9 @@ class crosscal:
         self.mfcal = mfcal
         self.puthd = puthd
         self.uvcal = uvcal
+        self.uvcat = uvcat
+        self.gpcopy = gpcopy
+        self.uvlin = uvlin
         # source can be a source object, or a list of source objects
         self.source = source
 

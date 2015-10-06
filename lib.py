@@ -55,7 +55,7 @@ def setup_logger(level='info', logfile=None, quiet=False):
     logger.setLevel(logging.DEBUG)
     logger.propagate = False 
     
-    fh_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
+    fh_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s : %(message)s', 
             datefmt='%m/%d/%Y %I:%M:%S %p')
     if logfile is None:
         fh = logging.FileHandler('log_filename.txt')
@@ -66,7 +66,7 @@ def setup_logger(level='info', logfile=None, quiet=False):
     logger.addHandler(fh)
 
     if not quiet:
-        ch_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        ch_formatter = logging.Formatter('%(name)s - %(levelname)s : %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
         ch = logging.StreamHandler()
         if level=='info':
             ch.setLevel(logging.INFO)
@@ -74,7 +74,12 @@ def setup_logger(level='info', logfile=None, quiet=False):
             ch.setLevel(logging.DEBUG)
         ch.setFormatter(ch_formatter)
         logger.addHandler(ch)
-    logger.info('Logging started!')
+        logger.info('Logging started!')
+        logger.info('To see the log in a bash window use the following command:')
+        logger.info("tail -n +1 -f "+logfile)
+    else:
+        print "Logging to file. To see the log in a bash window use the following command:"
+        print "tail -n +1 -f "+logfile
     return logger
 
 
