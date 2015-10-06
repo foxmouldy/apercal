@@ -257,10 +257,22 @@ class miriad:
             if os.path.exists(self.out):
                 lib.basher('rm -r '+self.out)
         elif self.task=='restor':
+            if os.path.exists(self.out):
                 lib.basher('rm -r '+self.out)
         elif self.task=='maths':
-                if os.path.exists(self.out):
-                    lib.basher('rm -r '+self.out)
+            if os.path.exists(self.out):
+                lib.basher('rm -r '+self.out)
+        elif self.task=='uvlin':
+            if os.path.exists(self.out):
+                lib.basher('rm -r '+self.out)
+        elif self.task=='uvcat':
+            if os.path.exists(self.out):
+                lib.basher('rm -r '+self.out)
+        else:
+            if os.path.exists(self.out)
+                lib.basher('rm -r '+self.out)
+                
+            
     def inp(self):
         logger = logging.getLogger('miriad '+self.task)
         attrs = vars(self)
