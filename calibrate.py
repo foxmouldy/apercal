@@ -181,7 +181,7 @@ class wselfcal:
             self.deep_image()
             self.mask_cutoffs = self.mask_cutoffs*(i+2)
             self.clean_cutoffs = self.mask_cutoffs*self.d
-        logger.info('SelfCal Completed.')    
+        logger.info('SELFCAL COMPLETED.')    
         
     def deep_image(self):
         '''
@@ -190,17 +190,18 @@ class wselfcal:
         and at their own risk.
         '''
         logger = logging.getLogger('deep_image')
-        logger.info("Mask threshold: IMAX"+str(self.mask_cutoffs[0]))
+        logger.info("Mask threshold: IMAX/"+str(self.mask_cutoffs[0]))
         self.invert.go(rmfiles=True)
         self.imstat.in_ = self.invert.map
-        immax = float(self.imstat.go()[-1].split()[3])
+        #immax = float(self.imstat.go()[1].split()[5])
+        immax = float(self.imstat.go()[1].split()[5].replace('-', ' -').replace('E -', 'E-').split()[0])
         self.maths.mask = self.invert.map+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[0], self.trms))
         self.maths.go(rmfiles=True)
         for j in range(0,int(self.num_minor)):
             logger.info('Starting /minor-cycle = '+str(1+j))
             if j>0:
                 self.imstat.in_ = self.image
-                self.immax = float(self.imstat.go()[-1].split()[3])
+                immax = float(self.imstat.go()[1].split()[5].replace('-', ' -').replace('E -', 'E-').split()[0])
                 self.maths.mask = self.image+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[j], self.trms))
                 self.maths.go(rmfiles=True)
             self.clean.cutoff = "{:2.2}".format(max(immax/self.clean_cutoffs[j], self.trms))
@@ -212,9 +213,7 @@ class wselfcal:
             self.restor.out = self.residual
             self.restor.go(rmfiles=True)
             logger.info('Completed /minor-cycle = '+str(1+j))
-
-
-
+        logger.info("DEEP IMAGE COMPLETED!")
 
 ####################################################################################################
 
@@ -518,3 +517,4 @@ restor = lib.miriad('restor')
 
 # IMSTAT
 imstat = lib.miriad('imstat')
+imstat.options = 'nohead'

@@ -33,18 +33,18 @@ def check_tempdir(tempdir=None):
     '''
     logger = logging.getLogger()
     if tempdir is None:
-        logger.warn("Setting tempdir to /home/<user>/")
-        logger.warn("This could dump a **HUGE** amount of files into /home/<user>/")
-        answer = lib.query_yes_no("Are you sure you want to continue?")
-        if answer:
-            tempdir = os.path.expanduser('~')
-            return tempdir
-        else:
-            sys.exit("Make a new tempdir - I suggest /home/<user>/mirtemp/")
+        logger.warn("Setting tempdir to /home/<user>/mplot")
+        tempdir = os.path.expanduser('~')+'/mplot'
+        if not os.path.exists(tempdir):
+            answer = lib.query_yes_no("Are you sure you want to continue?")
+            if answer:
+                lib.basher('mkdir '+tempdir)
+        return tempdir
     else:
         check = os.path.isdir(tempdir)
-        if not check:
-            sys.exit("tempdir does not exist!")
+        if not os.path.exists(tempdir):
+            logger.warn("tempdir does not exist!")
+            lib.basher('mkdir '+tempdir)
         else:
             return tempdir
 
@@ -63,19 +63,19 @@ def check_file(f=None):
         sys.exit("File not specified!")
         
 
-def videcon(outname, tempdir = "/home/frank/", r=2.):
+def videcon(outname, tempdir = None, r=2.):
     '''
     Uses avconv to make the video!
     '''
-    o = lib.basher("avconv -r "+str(r)+" -f image2 -i "+tempdir+"pgplot%d.gif -vcodec libx264 -y "+outname)
+    o = lib.basher("avconv -r "+str(r)+" -f image2 -i "+tempdir+"/pgplot%d.gif -vcodec libx264 -y "+outname)
 
-def vidshow(U=None, tempdir="/home/frank/", vidname="some_vid", r=2):
+def vidshow(U=None, tempdir=None, vidname="some_vid", r=2):
     '''
     vidshow: merge gifs into m4v and construct the HTML embedder for IPython
     '''
     gifs = []
     
-    lib.basher("rm "+tempdir+"*gif*")
+    lib.basher("rm "+tempdir+"/*gif*")
     
     U = lib.basher('ls pgplot.gif*')
     for i in range(0,len(U)):
@@ -107,7 +107,7 @@ def vembed(video=None):
                 logger.critical("Please provide video to embed.")
                 sys.exit(0)
 
-def uvplt(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
+def uvplt(vis=None, r=2., tempdir = None, **kwargs):
     '''
     IPython Video Embedder for UVPLT. 
     vis = Full path of vis to be plotted
@@ -138,7 +138,7 @@ def uvplt(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
     # Return the HTML object to the IPython Notebook for Embedding
     return HTML
    
-def uvspec(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
+def uvspec(vis=None, r=2., tempdir = None, **kwargs):
     '''
     IPython Video Embedder for UVSPEC. 
     vis = Full path of vis to be plotted
@@ -166,7 +166,7 @@ def uvspec(vis=None, r=2., tempdir = "/home/frank/", **kwargs):
     
     return HTML
 
-def gpplt(vis=None, r=2, tempdir = "/home/frank/", **kwargs):
+def gpplt(vis=None, r=2, tempdir = None, **kwargs):
     '''
     IPython Video Embedder for GPPLT. 
     vis = Full path of vis to be plotted
@@ -231,7 +231,7 @@ def imview(im=None, r=2, tempdir = None, typ='pixel', slev = "p,1", levs="2e-3",
     # Return the HTML object to IPython Notebook for Embedding!
     return HTML
 
-def imhist(im=None, tempdir = '/home/frank/', device='/gif'):
+def imhist(im=None, tempdir = None, device='/gif'):
 	'''
 	Pops up an histogram of the image.
 	'''

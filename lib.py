@@ -15,8 +15,9 @@ from astropy import units as u
 from astropy.io import ascii
 deg2rad = pl.pi/180.
 # Its rather messy to reload the logging library, but is necessary if the logger is going to work.
-import lib
 reload(logging)
+
+print 'Setup logger with lib.setup_logger()'
 
 class source:
     def __init__(self, pathtodata=None, ms=None, uvf=None, uv=None, path=None):
@@ -75,9 +76,10 @@ def setup_logger(level='info', logfile=None, quiet=False):
         ch.setFormatter(ch_formatter)
         logger.addHandler(ch)
         logger.info('Logging started!')
-        logger.info('To see the log in a bash window use the following command:')
-        logger.info("tail -n +1 -f "+logfile)
-    else:
+        if logfile is not None:
+            logger.info('To see the log in a bash window use the following command:')
+            logger.info("tail -n +1 -f "+logfile)
+    elif logfile is not None:
         print "Logging to file. To see the log in a bash window use the following command:"
         print "tail -n +1 -f "+logfile
     return logger
@@ -174,7 +176,7 @@ def basher(cmd, showasinfo=False):
         logger.error(err)
     # NOTE: Returns the STD output.
     exceptioner(out, err)
-    logger.info("Returning output.")
+    logger.debug("Returning output.")
     # Standard output error are returned in a more convenient way
     return out.split('\n')[0:-1]
 
@@ -185,7 +187,7 @@ def get_source_names(vis=None):
     sources from a MIRIAD visibility file.
     '''
     if vis!=None:
-        u = lib.masher(task='uvindex', vis=vis)
+        u = masher(task='uvindex', vis=vis)
         i = [i for i in range(0,len(u)) if "pointing" in u[i]]
         N = len(u)
         s_raw = u[int(i[0]+2):N-2]
@@ -211,9 +213,9 @@ class maths:
     def __getitem__(self, key):
         return getattr(self, key)
     def keywords(self):
-        lib.masher(task=self.task+" -kw")
+        masher(task=self.task+" -kw")
     def help(self):
-        lib.masher(task=self.task+" -k")
+        masher(task=self.task+" -k")
     def go(self):
         logger = logging.getLogger(self.task)
 	paths = os.path.split(self.exp)
@@ -222,7 +224,7 @@ class maths:
 		os.chdir(paths[0])
 		self.exp = paths[1]	
 		self.mask = self.mask.replace(paths[0]+'/', '')
-        output = lib.masher(**self.__dict__)
+        output = masher(**self.__dict__)
 	return output
 	# Return to old path
 	if paths[0]!='':
@@ -242,35 +244,35 @@ class miriad:
     def __getitem__(self, key):
         return getattr(self, key)
     def keywords(self):
-        lib.masher(task=self.task+" -kw")
+        masher(task=self.task+" -kw")
     def help(self):
-        lib.masher(task=self.task+" -k")
+        masher(task=self.task+" -k")
     def rmfiles(self):
         logger = logging.getLogger('miriad '+self.task)
         logger.debug("Cleanup - files will be DELETED.")
         if self.task=='invert':
             if os.path.exists(self.map):
-                lib.basher("rm -r "+self.map)
+                basher("rm -r "+self.map)
             if os.path.exists(self.beam):
-                lib.basher("rm -r "+self.beam)
+                basher("rm -r "+self.beam)
         elif self.task=='clean':
             if os.path.exists(self.out):
-                lib.basher('rm -r '+self.out)
+                basher('rm -r '+self.out)
         elif self.task=='restor':
             if os.path.exists(self.out):
-                lib.basher('rm -r '+self.out)
+                basher('rm -r '+self.out)
         elif self.task=='maths':
             if os.path.exists(self.out):
-                lib.basher('rm -r '+self.out)
+                basher('rm -r '+self.out)
         elif self.task=='uvlin':
             if os.path.exists(self.out):
-                lib.basher('rm -r '+self.out)
+                basher('rm -r '+self.out)
         elif self.task=='uvcat':
             if os.path.exists(self.out):
-                lib.basher('rm -r '+self.out)
+                basher('rm -r '+self.out)
         else:
-            if os.path.exists(self.out)
-                lib.basher('rm -r '+self.out)
+            if os.path.exists(self.out):
+                basher('rm -r '+self.out)
                 
             
     def inp(self):
@@ -282,7 +284,7 @@ class miriad:
         logger = logging.getLogger('miriad '+self.task)
         if rmfiles:
             self.rmfiles()
-        output = lib.masher(**self.__dict__)
+        output = masher(**self.__dict__)
         logger.info('Completed.')
        	return output
         
@@ -416,7 +418,7 @@ def ms2uvfits(ms=None, uvf=None):
     logger.info("UVFITS: "+uvfits)
     logger.info("Directory: "+path2ms)
     # NOTE: Here I'm using masher to call ms2uvfits.
-    o = lib.masher(task='ms2uvfits', ms=ms, fitsfile=uvfits, writesyscal='T',
+    o = masher(task='ms2uvfits', ms=ms, fitsfile=uvfits, writesyscal='T',
             multisource='T', combinespw='T')
     logger.info("Appears to have ended successfully.")
 
@@ -453,16 +455,16 @@ def importuvfitsys(uvfits=None, uv=None, tsys=True):
         logger.warn(uv+' exists! I won\'t clobber. Skipping this part...')
         logger.info("Exiting gracefully.")
         return
-    lib.masher(task='wsrtfits', in_=uvfits, out=uv, op='uvin', velocity='optbary')
+    masher(task='wsrtfits', in_=uvfits, out=uv, op='uvin', velocity='optbary')
 
     # NOTE: Tsys Calibration
     #basher("attsys vis="+uv+" out=temp")
     if tsys is True:
         if os.path.exists('temp'):
-            lib.basher("rm -r temp")
-        lib.masher(task='attsys', vis=uv, out='temp')
-        lib.basher('rm -r '+uv)
-        lib.basher('mv temp '+uv);
+            basher("rm -r temp")
+        masher(task='attsys', vis=uv, out='temp')
+        basher('rm -r '+uv)
+        basher('mv temp '+uv);
     logger.info('Appears to have ended successfully...')    
 
 def uvflag(vis=None, select=None):
@@ -486,7 +488,7 @@ def uvflag(vis=None, select=None):
         sys.exit(0)
     # Flag each selection in a for-loop
     for s in select.split(';'):
-        o = lib.masher(task='uvflag', vis=vis, select='"'+s+'"', flagval='flag')
+        o = masher(task='uvflag', vis=vis, select='"'+s+'"', flagval='flag')
         logger.info(o)
     logger.info("Appears to have ended successfully.")    
 
@@ -523,14 +525,14 @@ def pgflag(vis=None, flagpar='6,2,2,2,5,3', settings=None, stokes='qq'):
         params = settings.get('pgflag')
         logger.info("Doing PGFLAG on "+vis+" using stokes="+params.stokes+" with flagpar="+params.flagpar)
         logger.info("Output written to "+vis+'.pgflag.txt')
-        o = lib.masher(task='pgflag', vis=vis, stokes=params.stokes, flagpar=params.flagpar,
+        o = masher(task='pgflag', vis=vis, stokes=params.stokes, flagpar=params.flagpar,
                 options='nodisp', command="'<'")
     # Do PGFLAG with input settings, i.e. no settings file provided.
     if vis is not None and settings is None:
         logger.info("Doing PGFLAG on "+vis+" using stokes "+stokes+" with flagpar="+flagpar)
-        o = lib.masher(task='pgflag', vis=vis, stokes=stokes, flagpar=flagpar, options='nodisp', command="'<'")
+        o = masher(task='pgflag', vis=vis, stokes=stokes, flagpar=flagpar, options='nodisp', command="'<'")
     logger.info("Writing output "+path2vis+'/'+vis+'.pgflag.txt')
-    lib.write2file('pgflag', o, vis+'.pgflag.txt')
+    write2file('pgflag', o, vis+'.pgflag.txt')
     logger.info("PGFLAG: DONE.")
 
 def query_yes_no(question, default="yes"):
