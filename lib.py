@@ -1,6 +1,4 @@
 #Monday, 28 September 2015
-import mirexecb
-import mirexecb as mirexec
 import logging
 from ConfigParser import SafeConfigParser
 import subprocess
@@ -141,7 +139,7 @@ def masher(task=None, **kwargs):
                  argstr+= k + '=' + str(kwargs[k])+ ' '
 
         cmd = task + argstr
-        logger.debug(cmd)
+        logger.info(cmd)
         if ("-k" in cmd) is True:
             out = basher(cmd, showasinfo=True)
         else:
@@ -408,6 +406,8 @@ def ms2uvfits(ms=None, uvf=None):
     # Start the processing by setting up an output name and reporting the status.
     if uvf is None:
         uvfits = ms.replace(".MS", ".UVF")
+    else:
+        uvfits = uvf
     if os.path.exists(uvfits):
         logger.error(uvfits+" exists! Skipping this part....")
         logger.info("Exiting gracefully.")

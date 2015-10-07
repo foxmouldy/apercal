@@ -17,31 +17,35 @@ class source:
     uv = Name of the MIRIAD uv file. If this is not provided, then a name will be derived from the
         ms.
     '''
-    def __init__(self, pathtodata='',  path='', ms=None, uvf=None, vis=None, output=None):
+    def __init__(self, pathtodata='',  path='', ms=None, uvf=None, vis=None):
         self.pathtodata = pathtodata
         self.ms = ms
         if uvf is None and ms is not None:
-            self.uvf = str(self.ms).upper().replace('.MS', 'UVF')
+            self.uvf = str(self.ms).upper().replace('.MS', '.UVF')
         else:
             self.uvf = uvf
         if vis is None and ms is not None:
-            self.vis = str(self.ms).upper().replace('.MS', 'UV')
+            self.vis = str(self.ms).upper().replace('.MS', '.UV')
         else:
             self.vis = vis
         if path is '':
             self.path = pathtodata
         else:    
             self.path = path
-        if output is None:
-            self.output = 'output'
-        else:    
-            self.output = output    
     
     def update(self):
         if self.path is '' and self.pathtodata is not '':
             self.path = self.pathtodata
         if self.path is not '' and self.pathtodata is '':
             self.pathtodata = self.path
+        if self.uvf is None and self.ms is not None:
+            self.uvf = str(self.ms).upper().replace('.MS', '.UVF')
+        else:
+            self.uvf = self.uvf    
+        if self.vis is None and self.ms is not None:
+            self.vis = str(self.ms).upper().replace('.MS', '.UV')
+        else:
+            self.vis = self.vis    
 
 ####################################################################################################
 
@@ -57,7 +61,8 @@ class wselfcal:
 
         self.source = source()
         self.path = self.source.path
-        self.output = self.source.output
+        # The source path is the default.
+        self.output = self.source.path
         self.vis = self.source.vis
 
         self.num_major = 5 
@@ -247,11 +252,11 @@ class crosscal:
             logger.info('Setting path to first source')
             sourc = self.source[0]
             self.path = sourc.path
-            self.output = sourc.output
+            self.output = sourc.path
             self.vis = sourc.vis
         else:
             self.path = self.source.path
-            self.output = self.source.output
+            self.output = self.source.path
             self.vis = self.source.vis
 
         try:
