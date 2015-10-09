@@ -18,6 +18,7 @@ class source:
         ms.
     '''
     def __init__(self, pathtodata='',  path='', ms=None, uvf=None, vis=None):
+        self.logger = logging.getLogger("SOURCE")
         self.pathtodata = pathtodata
         self.ms = ms
         if uvf is None and ms is not None:
@@ -46,7 +47,13 @@ class source:
             self.vis = str(self.ms).upper().replace('.MS', '.UV')
         else:
             self.vis = self.vis    
-
+        
+    def history(self):
+        logger =logging.getLogger(self.vis)
+        F = open(self.path+'/'+self.vis+'/history')
+        for f in F.readlines():
+            logger.info(f.replace('\n',''))
+             
 ####################################################################################################
 
 class wselfcal:
@@ -65,8 +72,8 @@ class wselfcal:
         self.output = self.source.path
         self.vis = self.source.vis
 
-        self.num_major = 5 
-        self.num_minor = 3
+        self.num_selfcal = 5 
+        self.num_clean = 3
         self.linear = True # Can be linear or log. If log, then the entries are exponents.
         self.cmin = 3
         self.cmax = 2
@@ -155,9 +162,9 @@ class wselfcal:
         # Advanced Attributes
         # This is an extra level of protection against not having enough cutoffs.
         if self.linear:
-            self.mask_cutoffs = pl.linspace(float(self.cmin), float(self.cmax), self.num_minor)
+            self.mask_cutoffs = pl.linspace(float(self.cmin), float(self.cmax), self.num_clean)
         else:
-            self.mask_cutoffs = pl.logspace(float(pl.log10(self.cmin)), float(pl.log10(self.cmax)), self.num_minor)
+            self.mask_cutoffs = pl.logspace(float(pl.log10(self.cmin)), float(pl.log10(self.cmax)), self.num_clean)
         self.clean_cutoffs = self.mask_cutoffs*self.d
         self.path0 = os.getcwd()
         self.trms = self.nsigma*float(self.obsrms.go()[-1].split()[3])/1000. # OBSRMS will return values in mJy/beam
@@ -169,19 +176,19 @@ class wselfcal:
         logger = self.logger
         logger.info('Starting SelfCal')
         self.setup()
-        if len(self.mask_cutoffs)<self.num_minor or len(self.clean_cutoffs)<self.num_minor:
+        if len(self.mask_cutoffs)<self.num_clean or len(self.clean_cutoffs)<self.num_clean:
             logger.critical("Insufficient mask and clean cutoffs provided!")
-            logger.critical("Number of cutoffs = num_minor")
+            logger.critical("Number of cutoffs = num_clean")
             logger.critical("Please adjust and try again.")
             sys.exit(0)
         if self.rmgains:
             lib.basher('rm -r '+self.vis+'/gains')
             logger.info("Removing previous gains.")
-        logger.info("Doing selfcal with "+str(self.num_major)+" major cycles.")
+        logger.info("Doing selfcal with "+str(self.num_selfcal)+" major cycles.")
 
         self.deep_image()
-        for i in range(0,int(self.num_major)):
-            logger.info("Major Cycle = "+str(i+1))
+        for i in range(0,int(self.num_selfcal)):
+            logger.info("SelfCal Cycle = "+str(i+1))
             self.selfcal.go()
             self.deep_image()
             self.mask_cutoffs = self.mask_cutoffs*(i+2)
@@ -199,14 +206,14 @@ class wselfcal:
         self.invert.go(rmfiles=True)
         self.imstat.in_ = self.invert.map
         #immax = float(self.imstat.go()[1].split()[5])
-        immax = float(self.imstat.go()[1].split()[5].replace('-', ' -').replace('E -', 'E-').split()[0])
+        immax = float(self.imstat.go()[1].split()[5])
         self.maths.mask = self.invert.map+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[0], self.trms))
         self.maths.go(rmfiles=True)
-        for j in range(0,int(self.num_minor)):
-            logger.info('Starting /minor-cycle = '+str(1+j))
+        for j in range(0,int(self.num_clean)):
+            logger.info('Starting clean-cycle = '+str(1+j))
             if j>0:
                 self.imstat.in_ = self.image
-                immax = float(self.imstat.go()[1].split()[5].replace('-', ' -').replace('E -', 'E-').split()[0])
+                immax = float(self.imstat.go()[1].split()[5])
                 self.maths.mask = self.image+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[j], self.trms))
                 self.maths.go(rmfiles=True)
             self.clean.cutoff = "{:2.2}".format(max(immax/self.clean_cutoffs[j], self.trms))
@@ -217,7 +224,7 @@ class wselfcal:
             self.restor.mode = 'residual'
             self.restor.out = self.residual
             self.restor.go(rmfiles=True)
-            logger.info('Completed /minor-cycle = '+str(1+j))
+            logger.info('Completed clean-cycle = '+str(1+j))
         logger.info("DEEP IMAGE COMPLETED!")
 
 ####################################################################################################
@@ -332,32 +339,37 @@ class crosscal:
             self.pgflag.vis = sourc.vis
             self.pgflag.go()
 
-    def ms2uvfits(self):
+    def ms2uvfits(self, sourc=None):
         '''
         wrapper around ms2uvfits
         '''
         path0 = os.getcwd()
-        if self.source.ms is None:
+        if sourc is None:
+            sourc = self.source
+        if sourc.ms is None:
             self.logger.critical("MS not provided. Please check source.")
             sys.exit(0)
         try:
-            os.chdir(self.source.pathtodata)
+            os.chdir(sourc.pathtodata)
         except:
             # Error message 
             logger.critical("Path does not exist!")
             logger.critical("Error with MS provided.")
             sys.exit(0)
-        lib.ms2uvfits(ms=self.source.ms, uvf=self.source.uvf)
-        os.chdir(path0)    
-        
+        lib.ms2uvfits(ms=sourc.ms, uvf=sourc.uvf)
+        os.chdir(path0)  
+
     def importloop(self, sourc):
         '''
+        A single loop of commonly used tasks for the import of WSRT data. This requires a source
+        object and does the following:
+        source.ms -> ms2uvfits -> source.uvfits -> wsrtfits -> attsys -> puthd -> source.vis
         '''
         if sourc.ms is not None:
             if os.path.exists(sourc.pathtodata+'/'+sourc.uvf):
                 self.logger.error(sourc.uvf+" found, not overwriting.")
             else:    
-                ms2uvfits(sourc.ms)
+                self.ms2uvfits(sourc)
         else:
             self.logger.warn('No MS provided. I\'m assuming that it\'s already been generated.')
         # Change path to where the output should be.
@@ -369,10 +381,11 @@ class crosscal:
             os.chdir(sourc.path)
         if os.path.exists(sourc.path+'/'+sourc.vis):
             self.logger.error(sourc.vis+' found, not overwriting.')
+            sys.exit(0)
         else:
             self.wsrtfits.in_ = sourc.uvf
-            self.wsrtfits.out = os.path.relpath(sourc.pathtodata, sourc.path)+'/'+sourc.vis
-            self.wsrtfits.go()
+            self.wsrtfits.out = os.path.relpath(sourc.pathtodata, sourc.path)+'/'+sourc.vis+'.atemp'
+            self.wsrtfits.go(rmfiles=True)
         self.do_tsys(sourc.vis)
         self.fixhead(sourc.vis)
 
@@ -389,8 +402,8 @@ class crosscal:
                 # First, go to the MS file and convert it.
                 self.importloop(sourc)
         else:
-            sourc = self.source
-            self.importloop(sourc) 
+            #sourc = self.source
+            self.importloop(self.source) 
         os.chdir(path0)
 
     def fixhead(self, vis):
@@ -410,12 +423,10 @@ class crosscal:
         '''
         Does Tsys correction in input vis using the MIRIAD task ATTSYS. 
         '''
-        attsys.vis = vis
-        if os.path.exists('attsys_temp'):
-            lib.basher('rm -r attsys_temp')
-        self.attsys.out = 'attsys_temp'
-        self.attsys.go()
-        lib.basher('mv attsys_temp '+vis)
+        self.attsys.vis = vis+'.atemp'
+        self.attsys.out = vis
+        self.attsys.go(rmfiles=True)
+        lib.basher('mv '+vis+'.atemp '+vis)
 
 ####################################################################################################
 # MIRIAD interfaces for CROSSCAL 
@@ -522,4 +533,4 @@ restor = lib.miriad('restor')
 
 # IMSTAT
 imstat = lib.miriad('imstat')
-imstat.options = 'nohead'
+imstat.options = 'nohead,guaranteespaces'

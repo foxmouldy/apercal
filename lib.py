@@ -271,7 +271,6 @@ class miriad:
         else:
             if os.path.exists(self.out):
                 basher('rm -r '+self.out)
-                
             
     def inp(self):
         logger = logging.getLogger('miriad '+self.task)
