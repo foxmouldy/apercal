@@ -173,6 +173,7 @@ class wselfcal:
         '''
         Runs the selfcal loop niters times
         '''
+        self.going = True
         logger = self.logger
         logger.info('Starting SelfCal')
         self.setup()
@@ -185,7 +186,6 @@ class wselfcal:
             lib.basher('rm -r '+self.vis+'/gains')
             logger.info("Removing previous gains.")
         logger.info("Doing selfcal with "+str(self.num_selfcal)+" major cycles.")
-
         self.deep_image()
         for i in range(0,int(self.num_selfcal)):
             logger.info("SelfCal Cycle = "+str(i+1))
@@ -205,8 +205,9 @@ class wselfcal:
         logger.info("Mask threshold: IMAX/"+str(self.mask_cutoffs[0]))
         self.invert.go(rmfiles=True)
         self.imstat.in_ = self.invert.map
-        #immax = float(self.imstat.go()[1].split()[5])
         immax = float(self.imstat.go()[1].split()[5])
+        logger.info("IMMAX = "+str(immax)+" Jy")
+        logger.info("TRMS = "+str(self.trms)+" Jy")
         self.maths.mask = self.invert.map+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[0], self.trms))
         self.maths.go(rmfiles=True)
         for j in range(0,int(self.num_clean)):

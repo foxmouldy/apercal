@@ -11,11 +11,44 @@ from astropy.coordinates import Angle, ICRS, Distance, SkyCoord
 import astropy.coordinates as coord
 from astropy import units as u
 from astropy.io import ascii
+import pyfits 
+
 deg2rad = pl.pi/180.
 # Its rather messy to reload the logging library, but is necessary if the logger is going to work.
 reload(logging)
 
 print 'Setup logger with lib.setup_logger()'
+
+def qimplot(image=None, rmin=-2, rmax=2, cmap='gray'):
+    """
+    qimplot: Quick Image Plot
+    Plots image in grayscale. Colorscale is from rmin*RMS to rmax*RMS.
+    Defaults:
+        rmin = -2
+        rmax = +2
+        cmap = 'gray'
+            Can be any of the usual cmap values, e.g. 'YlOrRd' or 'jet'
+    """
+    if image is None:
+        logger.critical("Please prvide input image!")
+    pl.figure(figsize=(10,10))
+    fits = miriad('fits')
+    if not os.path.exists(image):
+        logger.critical(image+" not found!")
+        sys.exit(0)
+    fits.in_ = image
+    fits.out = image+'.fits'
+    fits.op = 'xyout'
+    fits.go(rmfiles=True)
+    imheader = pyfits.open(image+'.fits')
+    imdata = imheader[0].data
+    rms = pl.rms_flat(imdata[0,0,:,:])
+    logger.info('RMS = '+"{:2.2}".format(rms))
+    logger.info("Plotting from "+str(rmin)+"*RMS to "+str(rmax)"*RMS")
+    pl.imshow(pl.flipud(imdata[0,0,:,:]), cmap=cmap, vmin=-2*rms, vmax=2*rms)
+    pl.colorbar()
+    pl.xticks(())
+    pl.yticks(())
 
 class source:
     def __init__(self, pathtodata=None, ms=None, uvf=None, uv=None, path=None):
@@ -34,9 +67,8 @@ class source:
             self.ms = (self.pathtodata+'/'+self.ms).replace('//','/')
             self.uvf = (self.pathtodata+'/'+self.uvf).replace('//','/')
             self.uv = (self.path+'/'+self.uv).replace('//', '/')
-   
-
      
+    
 def write2file(header, text2write, file2write):
     '''
     write2file writes the output of some task to a textfile.
@@ -49,6 +81,11 @@ def write2file(header, text2write, file2write):
     f.writelines('\n---- \n')
     f.close()
 
+def implotter(fname, i=0, ni=3, j=0, nj=3):
+    """
+    """
+    # put some code here
+    
 def setup_logger(level='info', logfile=None, quiet=False):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
