@@ -5,7 +5,7 @@ This **APERCAL**  branch provides some generic tools and wrappers that allow you
 
 ## Installation
 
-Download the latest version of the ** CINEMA ** branch into a convenient location. 
+Download the latest version of the **CINEMA** branch of **APERCAL** into a convenient location. 
 
 Add the full path of the **APERCAL** directory to your $PYTHONPATH. You can do this by adding the following line to the end of your .bashrc file:
 
@@ -15,7 +15,7 @@ export PYTHONPATH=$PYTHONPATH:"path-to-apercal"
 
 That's it!
 
-You will need the package **avconv** to use the functions in `mplot.py`. This is available on Ubuntu distributions, but a fix hasn't been implemented for Mac OS X - not that you'll need `mplot.py` if you're using this on your laptop :)
+You will need the package **avconv** to use the functions in `mplot.py`. This is available on Ubuntu distributions, but a fix hasn't been implemented for Mac OS X yet - not that you'll need `mplot.py` if you're using this on your laptop :)
 
 ## Usage
 
@@ -42,7 +42,7 @@ scal = calibrate.wselfcal()
 
 **APERCAL** tasks and functions interact through the Python logger. All the output from **MIRIAD** tasks and the **APERCAL** functions get dumped into the log file. Its best to use a new different log file for each Notebook that you use.
 
-You can use the logger at two levels. The *info* level provides high-level messages from tasks and functions, i.e. that tasks are started and completed. The *debug* level provides low-level messages from tasks and functions, e.g. the full output. 
+You can use the logger at two levels. The *info* level provides high-level messages from tasks and functions, i.e., that tasks are started and completed. The *debug* level provides low-level messages from tasks and functions, i.e., the full output. 
 Errors and warnings are always reported. Using `quiet=True` will suppress the messages completely, but the messages will still get logged to an output file, which can be viewed by *tailing* it:
 ```
 tail -n +1 -f /home/user/my-log-file.log
