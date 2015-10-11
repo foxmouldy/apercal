@@ -29,6 +29,8 @@ def qimplot(image=None, rmin=-2, rmax=2, cmap='gray'):
         cmap = 'gray'
             Can be any of the usual cmap values, e.g. 'YlOrRd' or 'jet'
     """
+    logger = logging.getLogger('QIMPLOT')
+    logger.info("Quick Image Plot")
     if image is None:
         logger.critical("Please prvide input image!")
     pl.figure(figsize=(10,10))
@@ -44,8 +46,8 @@ def qimplot(image=None, rmin=-2, rmax=2, cmap='gray'):
     imdata = imheader[0].data
     rms = pl.rms_flat(imdata[0,0,:,:])
     logger.info('RMS = '+"{:2.2}".format(rms))
-    logger.info("Plotting from "+str(rmin)+"*RMS to "+str(rmax)"*RMS")
-    pl.imshow(pl.flipud(imdata[0,0,:,:]), cmap=cmap, vmin=-2*rms, vmax=2*rms)
+    logger.info("Plotting from "+str(rmin)+"*RMS to "+str(rmax)+str("*RMS"))
+    pl.imshow(pl.flipud(imdata[0,0,:,:]), cmap=cmap, vmin=rmin*rms, vmax=rmax*rms)
     pl.colorbar()
     pl.xticks(())
     pl.yticks(())
