@@ -18,11 +18,14 @@ a fix.
 
 ##### Import of Measurement Sets (MS)
 * `ms2uvfits`
+
     ** At ASTRON, this is available on **astroware**. 
+    
     ** Beware of a potential bug - `ms2uvfits` may look for a `/home/user/data/geodetic` table, and
     will produce garbage UVFITS files if this isn't found. A quick way to fix this on ASTRON servers is
     to create the `/home/user/data/` directory, and make a soft-link in there to the geodetic table
     which is typically available on **astroware**: 
+    
     ```
     ln -s /astroware/stow/casacore-1.3.0/share/casacore/measures_data/geodetic
     ```
