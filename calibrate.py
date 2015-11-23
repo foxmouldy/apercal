@@ -35,10 +35,16 @@ class source:
             self.path = path
     
     def update(self):
+        '''
+        source.update() will check that all the paths have been provided, and make some educated
+        guesses if some values have not been specified.
+        '''
         if self.path is '' and self.pathtodata is not '':
             self.path = self.pathtodata
-        if self.path is not '' and self.pathtodata is '':
+        elif self.path is not '' and self.pathtodata is '':
             self.pathtodata = self.path
+        else:
+            self.pathtodata = os.path.relpath(self.pathtodata,self.path)
         if self.uvf is None and self.ms is not None:
             self.uvf = str(self.ms).upper().replace('.MS', '.UVF')
         else:
@@ -47,6 +53,10 @@ class source:
             self.vis = str(self.ms).upper().replace('.MS', '.UV')
         else:
             self.vis = self.vis    
+        if self.uvf is not None:
+            self.uvf = (self.pathtodata+'/'+self.uvf).replace('//','/')
+        if self.ms is not None:    
+            self.ms = (self.pathtodata+'/'+self.uvf).replace('//','/')
         
     def history(self):
         logger =logging.getLogger(self.vis)
@@ -71,15 +81,20 @@ class wselfcal:
         # The source path is the default.
         self.output = self.source.path
         self.vis = self.source.vis
+        
+        # DR Limit
+        self.dr_lim = 100.
+        self.goflag = True
 
         self.num_selfcal = 5 
         self.num_clean = 3
         self.linear = True # Can be linear or log. If log, then the entries are exponents.
-        self.cmin = 3
-        self.cmax = 2
+        self.c = 3
+        self.dc = 3
         self.d = 10.
         self.nsigma = 7 
         self.immax = 0.0
+        self.nsrms = 0.0
         # Setting an advanced setting.
 
         # Initial Attributes: Constant - Things that you DON'T want to change
@@ -128,55 +143,68 @@ class wselfcal:
     def help(self):
         logger.info("Print some help!")
 
-    def setup(self):
+    def director(self, up=True):
         '''
-        setup moves to the output directory specified, makes a symbolic link to the visibility file
+        director moves to the output directory specified, makes a symbolic link to the visibility file
         that you're working on.
         '''
         # Initial Attributes: Constant - Things that you DON'T want to change
         # First, check that the path exists, and complain if it doesn't.
         # If a source has been provided but the path has not been set.
-
         self.path = self.source.path
         self.vis = self.source.vis    
-
-        if not os.path.exists(self.path):
-            self.logger.critical("Path not found. Please fix and start again.")
-            sys.exit(0)
-        
-        # Now make the output path
-        try:
-            os.chdir(self.path+'/'+self.output)
-        except:
-            self.logger.warn("Cannot find "+self.path+'/'+self.output+", making it ")
-            os.mkdir(self.path+'/'+self.output)
-            os.chdir(self.path+'/'+self.output)
-            
-        self.logger.warn('You have now moved into '+self.path+'/'+self.output)
-        self.logger.warn('All outputs will be relative to this path.')
-
-        self.logger.info("Making symbolic/soft link to your visibility file")
-        lib.basher("ln -s "+self.path+'/'+self.vis)
         self.selfcal.vis = self.vis
         self.invert.vis = self.vis
-        # Advanced Attributes
-        # This is an extra level of protection against not having enough cutoffs.
-        if self.linear:
-            self.mask_cutoffs = pl.linspace(float(self.cmin), float(self.cmax), self.num_clean)
+        if up:
+            self.logger.info("Imaging/SelfCal...")
+            if not os.path.exists(self.path):
+                self.logger.critical("Path not found. Please fix and start again.")
+                sys.exit(0)
+            
+            # Now make the output path
+            try:
+                os.chdir(self.path+'/'+self.output)
+            except:
+                self.logger.warn("Cannot find "+self.path+'/'+self.output+", making it ")
+                os.mkdir(self.path+'/'+self.output)
+                os.chdir(self.path+'/'+self.output)
+                
+            self.logger.warn('You have now moved into '+self.path+'/'+self.output)
+            self.logger.warn('All outputs will be relative to this path.')
+
+            self.logger.info("Making symbolic/soft link to your visibility file")
+            lib.basher("ln -s "+self.path+'/'+self.vis)
         else:
-            self.mask_cutoffs = pl.logspace(float(pl.log10(self.cmin)), float(pl.log10(self.cmax)), self.num_clean)
-        self.clean_cutoffs = self.mask_cutoffs*self.d
-        self.path0 = os.getcwd()
-        self.trms = self.nsigma*float(self.obsrms.go()[-1].split()[3])/1000. # OBSRMS will return values in mJy/beam
+            self.logger.info("Moving back to base.")
+            os.chdir(self.path)
+
+    def setup(self, up=True):
+            '''
+            setup sets up the input vis name, and mask/clean clean cutoffs based on the rms.
+            '''
+            # Advanced Attributes
+            # This is an extra level of protection against not having enough cutoffs.
+            cmax = self.c+(self.num_clean-1)*self.dc
+            if self.linear:
+                self.mask_cutoffs = pl.linspace(self.c, cmax, self.num_clean)
+            else:
+                self.mask_cutoffs = pl.logspace(float(pl.log10(self.c)), float(pl.log10(cmax)), self.num_clean)
+            self.clean_cutoffs = self.mask_cutoffs*self.d
+            self.path0 = os.getcwd()
+            # Theoretical Noise
+            self.trms = float(self.obsrms.go()[-1].split()[3])/1000. # OBSRMS will return values in mJy/beam
+            # N-sigma RMS
+            self.nsrms = self.nsigma*self.trms
 
     def go(self):
         '''
         Runs the selfcal loop niters times
         '''
-        self.going = True
+        self.goflag = True
+        self.director()
+        self.setup()
         logger = self.logger
         logger.info('Starting SelfCal')
-        self.setup()
         if len(self.mask_cutoffs)<self.num_clean or len(self.clean_cutoffs)<self.num_clean:
             logger.critical("Insufficient mask and clean cutoffs provided!")
             logger.critical("Number of cutoffs = num_clean")
@@ -187,12 +215,25 @@ class wselfcal:
             logger.info("Removing previous gains.")
         logger.info("Doing selfcal with "+str(self.num_selfcal)+" major cycles.")
         self.deep_image()
-        for i in range(0,int(self.num_selfcal)):
+        i = 0
+        N = int(self.num_selfcal)
+        # You have to be very careful here. The while loop will terminate if either i<N or the DR
+        # limit has been reached. The "and" is very important, since an "or" will result in a race
+        # condition. 
+        # NOTE: For loop being replaced at the moment. 
+        #for i in range(0,int(self.num_selfcal)):
+        while self.goflag and i<N:
+            self.director()
             logger.info("SelfCal Cycle = "+str(i+1))
             self.selfcal.go()
+            # Will only work if the goflag is True, or up :)
             self.deep_image()
             self.mask_cutoffs = self.mask_cutoffs*(i+2)
             self.clean_cutoffs = self.mask_cutoffs*self.d
+            i+= 1 
+        logger.info('goflag being set back to True for next time :)')
+        self.goflag = True
+        self.director(up=False)
         logger.info('SELFCAL COMPLETED.')    
         
     def deep_image(self):
@@ -202,30 +243,57 @@ class wselfcal:
         and at their own risk.
         '''
         logger = logging.getLogger('deep_image')
+        logger.info("Starting...")
+        self.director()
+        if len(self.mask_cutoffs)<self.num_clean or len(self.clean_cutoffs)<self.num_clean:
+            logger.debug("Setting up clean and mask thresholds.")
+            self.setup()        
         logger.info("Mask threshold: IMAX/"+str(self.mask_cutoffs[0]))
+        logger.info("Initial INVERT")
         self.invert.go(rmfiles=True)
         self.imstat.in_ = self.invert.map
         immax = float(self.imstat.go()[1].split()[5])
         logger.info("IMMAX = "+str(immax)+" Jy")
         logger.info("TRMS = "+str(self.trms)+" Jy")
-        self.maths.mask = self.invert.map+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[0], self.trms))
-        self.maths.go(rmfiles=True)
-        for j in range(0,int(self.num_clean)):
-            logger.info('Starting clean-cycle = '+str(1+j))
-            if j>0:
-                self.imstat.in_ = self.image
-                immax = float(self.imstat.go()[1].split()[5])
-                self.maths.mask = self.image+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[j], self.trms))
+        self.dr = immax/self.trms
+        logger.info("Theoretical DR = IMMAX/TRMS = "+str(self.dr))
+        j = 0
+        N = int(self.num_clean)
+        if self.goflag:
+            while j<N and immax/self.mask_cutoffs[j]>immax/self.dr_lim and self.goflag:
+                self.maths.mask = self.invert.map+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[0],
+                    self.nsrms, immax/self.dr_lim))
                 self.maths.go(rmfiles=True)
-            self.clean.cutoff = "{:2.2}".format(max(immax/self.clean_cutoffs[j], self.trms))
-            self.clean.go(rmfiles=True)
-            self.restor.mode = 'clean'
-            self.restor.out = self.image 
-            self.restor.go(rmfiles=True)
-            self.restor.mode = 'residual'
-            self.restor.out = self.residual
-            self.restor.go(rmfiles=True)
-            logger.info('Completed clean-cycle = '+str(1+j))
+            #for j in range(0,int(self.num_clean)):
+                logger.info('Starting clean-cycle = '+str(1+j))
+                if j>0:
+                    self.imstat.in_ = self.image
+                    immax = float(self.imstat.go()[1].split()[5])
+                    self.maths.mask = self.image+".gt.{:2.2}".format(max(immax/self.mask_cutoffs[j],
+                        self.nsrms))
+                    self.maths.go(rmfiles=True)
+                self.clean.cutoff = "{:2.2}".format(immax/self.clean_cutoffs[j], 0.5*self.trms)
+                self.clean.go(rmfiles=True)
+                self.restor.mode = 'clean'
+                self.restor.out = self.image 
+                self.restor.go(rmfiles=True)
+                self.restor.mode = 'residual'
+                self.restor.out = self.residual
+                self.restor.go(rmfiles=True)
+                logger.info('Completed clean-cycle = '+str(1+j))
+                if immax/self.mask_cutoffs[j]<self.nsrms:
+                    self.goflag = False
+                j+=1
+        else:
+            logger.warning("goflag is False. No deep_clean...")
+            logger.warning("You've probably hit the DR limit of "+str(self.dr_lim)+".")
+        if j<N:
+            self.goflag
+            logger.warning("DEEP IMAGE terminated after "+str(j)+" iterations out of a max of "+str(N)+" num_cleans.") 
+            logger.warning("This means that you've probably hit the DR limit of "+str(self.dr_lim)+".")
+            logger.warning("Setting goflag to False. This will exit the possible SelfCal Loop.")
+            logger.warning("If you only want to do deep image, set dr_lim to a huge number")
+        self.director(up=False)
         logger.info("DEEP IMAGE COMPLETED!")
 
 ####################################################################################################
